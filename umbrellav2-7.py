@@ -706,7 +706,7 @@ GCMC                            # Type of simulation GCMC, NVTMC , MD ....
 ./{1}.{0}.con                    # basename for config files
 1, {2}                          # first and last file numbers
 {5}.post.ctr.out                       # name for new ctrlfile that will regenerated
-{3:02d}.{5}.postoutput          # Base name for output files
+{3:02d}.{5}.postfile          # Base name for output files
 {4}, 0                         # Percentages of data to skipped at start and end 
 
 
