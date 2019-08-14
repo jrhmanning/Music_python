@@ -49,7 +49,13 @@ Antoine = {                                                 #This is your librar
     "Nitrogen":(3.7362, 264.651, -6.788, 63.14, 126),
     'DMFYang':(3.93068, 1337.716, -82.648, 303, 363),
     'DMFAA':(3.93068, 1337.716, -82.648, 303, 363),
-    'DMFCaleman':(3.93068, 1337.716, -82.648, 303, 363)
+    'DMFCaleman':(3.93068, 1337.716, -82.648, 303, 363),
+    'nitrobenzene':(4.21553,1727.592,-73.438,407.3,483.78),
+    'EG':(4.97012,1914.951, -84.996, 323, 473),
+    'Acetone':(4.42448, 1312.253, -32.445, 259.16, 507.6),
+    'EtOH':(5.24667, 1598.673, -46.424, 292.77, 366.63),
+    'MeOH':(5.20409, 1581.341, -33.5, 288.1, 356.83),
+    'dioxane':(4.58135, 1570.093, -31.297, 293, 378)
 }
 
 IntParams = {	 #Sig (ang), Eps(K), Q (e)   #Here are your atom-atom parameters for your forcefield. It's listed as atomtype_molecule or atomtype_forcefield. Check this before you do anything!
@@ -97,8 +103,33 @@ IntParams = {	 #Sig (ang), Eps(K), Q (e)   #Here are your atom-atom parameters f
 "O_DMFCaleman":(2.96,105.61,-0.5),
 "Carb_DMFCaleman":(3.75,52.80,0.5),
 "AldH_DMFCaleman":(2.5,15.16,0),
-'Methane_TRAPPE':(3.730,148,0)
-        }
+
+"Ar_NB":(0, 0, 0), #from TRAPPE, Q values are 2.42 on central dummy atom, -1.21 on pi cloud dummy atoms
+"C_NB":(4.5, 15, 0.14),
+"CH_NB":(3.74,48, 0),
+"N_NB":(3.31, 40., 0.82),
+"O_NB":(2.9, 80., -0.48),
+
+"O_diox":(2.39, 488, -0.38),
+"C_diox":(3.91, 52.5, 0.19),
+
+"Carb_Ace":(3.82, 40, 0.424),
+"C_Ace":(3.75, 98, 0),
+"O_Ace":(3.05, 79, -0.424),
+
+"C_EG":(3.95, 46, 0.265),
+"O_EG":(3.02, 93, -0.7),
+"H_EG":(0,0,0.435),
+
+"Me_EtOH":(3.75, 98, 0),
+"CH2_EtOH":(3.95, 46, 0.265),
+"O_EtOH":(3.02, 93, -0.7),
+"H_EtOH":(0,0,0.435),
+
+"Me_MeOH":(3.75, 98, 0.265),
+"O_MeOH":(3.02, 93, -0.7),
+"H_MeOH":(0,0,0.435)
+}
 
 MOF_el_list = ["Carbon", "Hydrogen", "Oxygen", "Zinc"] #This is a list of elements in your MOF, needed for the control file atom types section
 
@@ -112,29 +143,29 @@ errormessages = []
 #type(framework) #e.g. 'IRMOF1' (with apostrophes)
 framework = 'IRMOF1'
 ##Species - your sorbent. Only 1 for now
-species = "Methane"
+species = "EtOH_TRAPPE"
 #species = input("What is your sorbent species called?")
 #type(species)
 ##Temperature
-#T = 298 
-parser = argparse.ArgumentParser(description='Type your temperature.')
-parser.add_argument('T', nargs = 1, type=int)
-args= parser.parse_args()
-T = args.T[0]
+T = 298 
+#parser = argparse.ArgumentParser(description='Type your temperature.')
+#parser.add_argument('T', nargs = 1, type=int)
+#args= parser.parse_args()
+#T = args.T[0]
 
 #T = eval(input("What temperature (in K) would you like to test?"))
 #type(T)
 ##number of isotherm points
-n = 30
+n =20 
 #n = eval(input("How many isotherm points do you want?"))
 #type(n)
 ##Forcefield name
-forcefield = "TRAPPE"
+forcefield = "EtOH"
 #forcefield = input(input("What is yoru forcefield called?"))
 #type(forcefield)
-parentdir = Path('/home/r/jrhm21/scratch/01_music_IRMOF_solvent/')
+parentdir = Path('/home/r/jrhm21/scratch/03_music_chloroform_forcefield/')
 xptpath = Path('./experiments/{0}/{1}/'.format(species, T))
-minrelpress = -3
+minrelpress = -1.5
 maxrelpress = 0
 
 #placeholder
@@ -284,14 +315,14 @@ def AtmAtmMover(elements, forcefield, dxout = "./mapgen/test/"):
             for j in range (i+1, len(MOF_el_list)):
                 file.write("""{0} {1} LJ OFF\n""".format(MOF_el_list[i], MOF_el_list[j])) #LJ parameters for MOF 'i j' pairs, which are generally off
             for k in elements:
-                file.write("""{0} {1} LJ SIG@{3} EPS@{4} HICUT@{2}\n""".format(MOF_el_list[i], k, hicut, str((IntParams[MOF_el_list[i]][0]+IntParams['{0}_{1}'.format(k.split('_')[0], forcefield)][0])/2), str(sqrt(IntParams[MOF_el_list[i]][1]*IntParams['{0}_{1}'.format(k.split('_')[0], forcefield)][1])))) #MOF-fluid forcefield paramters
+                file.write("""{0} {1} LJ SIG@{3} EPS@{4} HICUT@{2}\n""".format(MOF_el_list[i], k, hicut, str(round((IntParams[MOF_el_list[i]][0]+IntParams['{0}_{1}'.format(k.split('_')[0], forcefield)][0])/2, 3)), str(round(sqrt(IntParams[MOF_el_list[i]][1]*IntParams['{0}_{1}'.format(k.split('_')[0], forcefield)][1]), 3)))) #MOF-fluid forcefield paramters
             file.write("\n")
         for i in range (0, len(elements)):
             raw_el = str(elements[i].split('_')[0] + '_' + str(forcefield)) #This line says which interaction types your fluid will take from the dictionary at the start of the script
             file.write("""{0} {0} LJ SIG@{1} EPS@{2} HICUT@{3}\n""".format(elements[i], IntParams[raw_el][0], IntParams[raw_el][1], hicut)) #LJ self-parameters for the fluid-fluid interactions
             for j in range (i+1, len(elements)):
                 logger.debug('i = '+ str(i)+ ', j= '+str(j) )
-                file.write("""{0} {1} LJ SIG@{3} EPS@{4} HICUT@{2}\n""".format(elements[i], elements[j], hicut, str((IntParams['{0}_{1}'.format(elements[i].split('_')[0], forcefield)][0]+IntParams['{0}_{1}'.format(elements[j].split('_')[0], forcefield)][0])/2), str(sqrt(IntParams['{0}_{1}'.format(elements[i].split('_')[0], forcefield)][1]*IntParams['{0}_{1}'.format(elements[j].split('_')[0], forcefield)][1])))) #LJ parameters for the fluid-fluid 'i j' interactions
+                file.write("""{0} {1} LJ SIG@{3} EPS@{4} HICUT@{2}\n""".format(elements[i], elements[j], hicut, str(round((IntParams['{0}_{1}'.format(elements[i].split('_')[0], forcefield)][0]+IntParams['{0}_{1}'.format(elements[j].split('_')[0], forcefield)][0])/2, 3)), str(round(sqrt(IntParams['{0}_{1}'.format(elements[i].split('_')[0], forcefield)][1]*IntParams['{0}_{1}'.format(elements[j].split('_')[0], forcefield)][1]),3)))) #LJ parameters for the fluid-fluid 'i j' interactions
             file.write("\n")
         file.write("#Coulombic region\n")
         for i in range (0, len(MOF_el_list)):
@@ -333,7 +364,7 @@ def SorbSorbWriter(species, elements,framework, dxout = "./mapgen/", pmap = True
                 for i in species:
                     file.write("\n{0} {1} COUL OFF\n" .format(i, framework)) #pairwise coulomb interactionsdon't work. Trust me, this is better.
                 logger.warning("Framework-fluid coulombic interactions are off") #warns you your coulomb fluid-framework stuff isn't happeneing
-            file.write("\n{0} {0} NCOUL BASIC LJ FAST\n{0} {0} COUL OFF\n\n".format(i))#SUM FAST EWALD KMAX@15 KAPPA@6.7\n\n" .format(i)) #I think this line shouldn't be here. Needs testing!
+            file.write("\n{0} {0} NCOUL BASIC LJ FAST\n{0} {0} COUL SUM FAST EWALD KMAX@15 KAPPA@6.7\n\n" .format(i)) #I think this line shouldn't be here. Needs testing!
         elif isinstance(species, str) == True: 
             if pmap == True: #using a MOF-fluid LJ potential map if true
                 file.write("{0} {1} NCOUL MAP@{1} FAST ".format(species, framework)) #declares it'll use a map
@@ -352,10 +383,10 @@ def SorbSorbWriter(species, elements,framework, dxout = "./mapgen/", pmap = True
                 file.write("{0} {1} COUL OFF\n" .format(species, framework)) #pairwise coulomb interactionsdon't work. Trust me, this is better.
                 logger.warning("Framework-fluid coulombic interactions are off") #warns you your coulomb fluid-framework stuff isn't happeneing
         if isinstance(species, str) == True:
-            file.write("\n{0} {0} NCOUL BASIC LJ FAST\n{0} {0} COUL OFF\n\n".format(species))#SUM FAST EWALD KMAX@15 KAPPA@6.7\n\n" .format(species))  #fluid fluid interactions, with Wolf coulombic interactions 
+            file.write("\n{0} {0} NCOUL BASIC LJ FAST\n{0} {0} COUL SUM FAST EWALD KMAX@15 KAPPA@6.7\n\n" .format(species))  #fluid fluid interactions, with Wolf coulombic interactions 
         elif isinstance(species, list) == True: 
             for i in species:
-                file.write("\n{0} {0} NCOUL BASIC LJ FAST\n{0} {0} COUL OFF\n\n".format(i))#SUM FAST EWALD KMAX@15 KAPPA@6.7\n\n" .format(i))  #fluid fluid interactions, with Wolf coulombic interactions 
+                file.write("\n{0} {0} NCOUL BASIC LJ FAST\n{0} {0} COUL SUM FAST EWALD KMAX@15 KAPPA@6.7\n\n" .format(i))  #fluid fluid interactions, with Wolf coulombic interactions 
     logger.debug("Sorb-Sorb file written!")    
 
 #Writes your intramolecular file
@@ -671,12 +702,14 @@ Ideal Parameters   # Tag for the equation of state (NULL = Ideal Gas)
 {0}            # Sorbate Name
 {5}           #  pressure
 Null               # sitemap filename (Null = no sitemap)
-3                  # no of gcmc movetypes
-1.0, 1.0, 1.0      # move type weights
+4                  # no of gcmc movetypes
+1.0, 1.0, 1.0, 1.0      # move type weights
 RINSERT                   # type of move.1
 RDELETE                   # type of move.2
 RTRANSLATE                # type of move.4
 0.2, 1                    # Delta Translate, adjust delta option (0=NO, 1=YES)
+RROTATE
+0.2, 1
 ------ Configuration Initialization -------------------------------------
 {0}             # Sorbate_Type\n""".format(species, framework, T, n, elements[-1], 'pressure.{0}.{1}.dat'.format(species, T) if pressure == 'file' else pressure)) #lets you define your pressure points manually, defaults to the values generated from the isothermgenerator
         if Restart == None: #for if you're starting a new isotherm
@@ -751,7 +784,7 @@ cd {2}
 #create symbolic links to your interactions files and pressure file
 ln -s ../../../../atoms atoms
 ln -s ../../../../molecules molecules
-ln -s ../../../../maps/ maps
+ln -s ../../../../maps/{0} maps
 
 ln -s ../atom_atom_file atom_atom_file
 ln -s ../intramolecular_file intramolecular_file
@@ -774,8 +807,8 @@ cp {4:02d}.trunc.postoutput ../truncpostfiles/
 
 
 """.format(Species, T, dirout, parentdir, iteration))
-#        for i, value in enumerate(isotherm): #for each isotherm point you're simulating
-#            file.write('music_gcmc {0}kpa_restart.ctr > {1}_restart.logfile\nmv finalconfig.xyz {3:02d}.{2}.{0}kpa.xyz\n'.format(value, int(i)+1, framework, int(iteration))) #set up a simulation to generate a new xyz file and move it to be names after the pressure point 
+        for i, value in enumerate(isotherm): #for each isotherm point you're simulating
+            file.write('music_gcmc {0}kpa_restart.ctr > {1}_restart.logfile\nmv finalconfig.xyz {3:02d}.{2}.{0}kpa.xyz\n'.format(value, int(i)+1, framework, int(iteration))) #set up a simulation to generate a new xyz file and move it to be names after the pressure point 
     os.chmod("{0}run.gcmc" .format(dirout), 0o777) #chmod so it's fully rwx for everyone (0o denotes the following number is in octal)
     logger.debug("Run file written!")
     
@@ -887,19 +920,19 @@ directorymaker('{0}/truncpostfiles/'.format(xptpath))
 logger.info("Working in directory {0}:".format(xptpath))
 TaskfarmRunWriter(species, T, framework, parentdir, '{0}/'.format(xptpath))                                                          #Writes the taskfarmer run file
 IsothermExtractMover(species, T, framework, '{0}/'.format(xptpath), n)	                                                           #Writes isothermextractor.py into place
-Intsetup(species, sorb_el_list, framework, forcefield, '{0}/'.format(xptpath), True) #sets up your individual interactions files. It'd be nice to have just 1 set for all 16 gcmcs, but we'll get there
+Intsetup(species, sorb_el_list, framework, forcefield, '{0}/'.format(xptpath), True, True) #sets up your individual interactions files. It'd be nice to have just 1 set for all 16 gcmcs, but we'll get there
 PressureFileWriter(species, T, satP, istm, '{0}/'.format(xptpath))  #writes your isotherm
 for directory in range (1,17):
     directorymaker('{0}/{1:02d}/'.format(xptpath, directory))
     logger.info("Working in directory {0}:".format('.{0}/{1:02d}/'.format(xptpath, directory)))
     #Intsetup(species, sorb_el_list, framework, forcefield, '{0}/{1:02d}/'.format(xptpath, directory), True, True) #sets up your individual interactions files. It'd be nice to have just 1 set for all 16 gcmcs, but we'll get there
-    GcmcControlChanger(species, sorb_el_list, T, n, framework, '{0}/{1:02d}/'.format(xptpath, directory), '2000000')                            #puts in the gcmc control file
+    GcmcControlChanger(species, sorb_el_list, T, n, framework, '{0}/{1:02d}/'.format(xptpath, directory), '1000000')                            #puts in the gcmc control file
     PostControlChanger(species, n, framework, '{0}/{1:02d}/'.format(xptpath, directory), directory)                            #puts in the post control file
     PostControlChanger(species, n, framework, '{0}/{1:02d}/'.format(xptpath, directory), directory, 60)                            #puts in the post control file
     GcmcRunWriter(species, T, framework, parentdir, '{0}/{1:02d}/'.format(xptpath, directory), istm, directory) #puts in the runfile
     #PressureFileWriter(species, T, satP, istm, '{0}/{1:02d}/'.format(xptpath, directory))  #writes your isotherm
-    #for i, value in enumerate(istm): #now i make the extra .ctr files for yoru subdirectories
-    #    GcmcControlChanger(species, sorb_el_list, T, 1, framework, '{0}/{1:02d}/'.format(xptpath, directory), '1', 'RESTARTFILE {0}.{1}.res.{2}'.format(framework, species, i+1), '{0}kpa_restart.ctr'.format(value), value) #makes your control files for all of your pressure points
+    for i, value in enumerate(istm): #now i make the extra .ctr files for yoru subdirectories
+        GcmcControlChanger(species, sorb_el_list, T, 1, framework, '{0}/{1:02d}/'.format(xptpath, directory), '1', 'RESTARTFILE {0}.{1}.res.{2}'.format(framework, species, i+1), '{0}kpa_restart.ctr'.format(value), value) #makes your control files for all of your pressure points
 
 logger.info('Finished writing your simulation files--------------------')
 logger.warning("""Now I'll wrap up.""")
