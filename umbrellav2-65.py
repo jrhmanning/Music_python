@@ -18,6 +18,8 @@ from math import sqrt, log
 from pathlib import Path
 import logging
 import datetime
+import argparse
+
 now = datetime.datetime.now()
 #try:
 #    input = raw_input("What is your sorbent species called?")
@@ -44,8 +46,11 @@ Antoine = {                                                 #This is your librar
     "Methanol":(5.20409, 1581.341, -33.5, 288, 356.8),
     "THF":(4.12118, 1202.942, -46.818, 296.29, 372.8),
     "DMF":(3.93068, 1337.716, -82.648, 303, 363),
-    "Nitrogen":(3.7362, 264.651, -6.788, 63.14, 126)
-    }
+    "Nitrogen":(3.7362, 264.651, -6.788, 63.14, 126),
+    'DMFYang':(3.93068, 1337.716, -82.648, 303, 363),
+    'DMFAA':(3.93068, 1337.716, -82.648, 303, 363),
+    'DMFCaleman':(3.93068, 1337.716, -82.648, 303, 363)
+}
 
 IntParams = {	 #Sig (ang), Eps(K), Q (e)   #Here are your atom-atom parameters for your forcefield. It's listed as atomtype_molecule or atomtype_forcefield. Check this before you do anything!
 	"Zinc":(2.763, 62.34, 0), #From UFF
@@ -91,7 +96,8 @@ IntParams = {	 #Sig (ang), Eps(K), Q (e)   #Here are your atom-atom parameters f
 "N_DMFCaleman":(3.25,85.52,-0.14),
 "O_DMFCaleman":(2.96,105.61,-0.5),
 "Carb_DMFCaleman":(3.75,52.80,0.5),
-"AldH_DMFCaleman":(2.5,15.16,0)
+"AldH_DMFCaleman":(2.5,15.16,0),
+'Methane_TRAPPE':(3.730,148,0)
         }
 
 MOF_el_list = ["Carbon", "Hydrogen", "Oxygen", "Zinc"] #This is a list of elements in your MOF, needed for the control file atom types section
@@ -111,6 +117,11 @@ species = "DMFCaleman"
 #type(species)
 ##Temperature
 T = 298 
+#parser = argparse.ArgumentParser(description='Type your temperature.')
+#parser.add_argument('T', nargs = 1, type=int)
+#args= parser.parse_args()
+#T = args.T[0]
+
 #T = eval(input("What temperature (in K) would you like to test?"))
 #type(T)
 ##number of isotherm points
@@ -341,10 +352,10 @@ def SorbSorbWriter(species, elements,framework, dxout = "./mapgen/", pmap = True
                 file.write("{0} {1} COUL OFF\n" .format(species, framework)) #pairwise coulomb interactionsdon't work. Trust me, this is better.
                 logger.warning("Framework-fluid coulombic interactions are off") #warns you your coulomb fluid-framework stuff isn't happeneing
         if isinstance(species, str) == True:
-            file.write("\n{0} {0} NCOUL BASIC LJ FAST\n{0} {0} COUL BASIC WFCOUL FAST\n\n" .format(species))  #fluid fluid interactions, with Wolf coulombic interactions 
+            file.write("\n{0} {0} NCOUL BASIC LJ FAST\n{0} {0} COUL OFF\n\n".format(species))#SUM FAST EWALD KMAX@15 KAPPA@6.7\n\n" .format(species))  #fluid fluid interactions, with Wolf coulombic interactions 
         elif isinstance(species, list) == True: 
             for i in species:
-                file.write("\n{0} {0} NCOUL BASIC LJ FAST\n{0} {0} COUL BASIC WFCOUL FAST\n\n" .format(i))  #fluid fluid interactions, with Wolf coulombic interactions 
+                file.write("\n{0} {0} NCOUL BASIC LJ FAST\n{0} {0} COUL OFF\n\n".format(i))#SUM FAST EWALD KMAX@15 KAPPA@6.7\n\n" .format(i))  #fluid fluid interactions, with Wolf coulombic interactions 
     logger.debug("Sorb-Sorb file written!")    
 
 #Writes your intramolecular file
@@ -685,8 +696,8 @@ Energy, position, pair_energy  # contents of datafile""".format(Restart, framewo
     logger.debug("GCMC control file written!")
 
 #Writes a .ctr file for your postprocessing. There;s orobably a better way than using music_post, but I'm not there yet
-def PostControlChanger(Species, T, n, framework, dirout):
-    with open("{0}post.ctr" .format(dirout), 'w') as file:
+def PostControlChanger(Species, n, framework, dirout, prefix, cutoff = '0'):
+    with open("{0}/{1}.post.ctr" .format(dirout, 'full' if cutoff == '0' else 'trunc'), 'w') as file:
         file.write("""####This section is apparently required for working with any post code. Who knows why? not me!
 #
 #
@@ -695,10 +706,10 @@ def PostControlChanger(Species, T, n, framework, dirout):
 -- Post Processor Information ------------
 GCMC                            # Type of simulation GCMC, NVTMC , MD ....
 ./{1}.{0}.con                    # basename for config files
-1, {3}                          # first and last file numbers
-post.ctr.out                       # name for new ctrlfile that will regenerated
-{1}.{0}.{2}K.post          # Base name for output files
-0, 0                         # Percentages of data to skipped at start and end 
+1, {2}                          # first and last file numbers
+{5}.post.ctr.out                       # name for new ctrlfile that will regenerated
+{3:02d}.{5}.postfile          # Base name for output files
+{4}, 0                         # Percentages of data to skipped at start and end 
 
 
 # The sections below are necessary only if you want the corresponding 
@@ -714,7 +725,7 @@ post.ctr.out                       # name for new ctrlfile that will regenerated
 ####    This section is reqd for Loading averages in your post code outputfiles
 ####    as of now only species loading vs sim. step (for all species)
 ------ Post : Loading Average Info -----------------------------------
-100       # Number of blocks into which data should be divided for stats""".format(species, framework, T, n))
+100       # Number of blocks into which data should be divided for stats""".format(Species, framework, n, prefix, cutoff, 'full' if cutoff == '0' else 'trunc'))
     logger.debug("Post control file written!")
 
 #Writes a bashscript for actually running your simulations, compatible with SLURM
@@ -742,7 +753,7 @@ cd {2}
 #create symbolic links to your interactions files and pressure file
 ln -s ../../../../atoms atoms
 ln -s ../../../../molecules molecules
-ln -s ../../../../maps/{0} maps
+ln -s ../../../../maps/ maps
 
 ln -s ../atom_atom_file atom_atom_file
 ln -s ../intramolecular_file intramolecular_file
@@ -752,17 +763,21 @@ ln -s ../pressure.{0}.{1}.dat pressure.{0}.{1}.dat
 #set the paths for atoms, molecules, pmaps, and emaps WARNING softcoded in umbrella, check it's right!
 export ATOMSDIR=atoms
 export MOLSDIR=molecules
-export PMAPDIR=maps/
-export EMAPDIR=maps/
+export PMAPDIR=maps
+export EMAPDIR=maps
 
 
 # -- Run
 music_gcmc gcmc.ctr > logfile.gcmc #runs your main simulation
-music_post post.ctr > logfile.post #runs your postprocessing
+music_post full.post.ctr > logfile.post.full #runs your postprocessing
+cp {4:02d}.full.postoutput ../fullpostfiles/
+music_post trunc.post.ctr > logfile.post.trunc #runs your postprocessing
+cp {4:02d}.trunc.postoutput ../truncpostfiles/
 
-""".format(Species, T, dirout, parentdir))
-        for i, value in enumerate(isotherm): #for each isotherm point you're simulating
-            file.write('music_gcmc {0}kpa_restart.ctr > {1}_restart.logfile\nmv finalconfig.xyz {3:02d}.{2}.{0}kpa.xyz\n'.format(value, int(i)+1, framework, int(iteration))) #set up a simulation to generate a new xyz file and move it to be names after the pressure point 
+
+""".format(Species, T, dirout, parentdir, iteration))
+#        for i, value in enumerate(isotherm): #for each isotherm point you're simulating
+#            file.write('music_gcmc {0}kpa_restart.ctr > {1}_restart.logfile\nmv finalconfig.xyz {3:02d}.{2}.{0}kpa.xyz\n'.format(value, int(i)+1, framework, int(iteration))) #set up a simulation to generate a new xyz file and move it to be names after the pressure point 
     os.chmod("{0}run.gcmc" .format(dirout), 0o777) #chmod so it's fully rwx for everyone (0o denotes the following number is in octal)
     logger.debug("Run file written!")
     
@@ -869,21 +884,24 @@ logger.info("""Now I'll set up your simulation documents for you""")
 #xptpath = Path('./experiments/{0}/{1}/'.format(species, T))
 directorymaker('{0}/'.format(xptpath)) #makes your general experiment directory for this isotherm
 directorymaker('./experiments/finalconfigs/{0}/{1}/'.format(species, T)) #makes your 16 subdirectories for taskfarming
+directorymaker('{0}/fullpostfiles/'.format(xptpath))
+directorymaker('{0}/truncpostfiles/'.format(xptpath))
 logger.info("Working in directory {0}:".format(xptpath))
 TaskfarmRunWriter(species, T, framework, parentdir, '{0}/'.format(xptpath))                                                          #Writes the taskfarmer run file
 IsothermExtractMover(species, T, framework, '{0}/'.format(xptpath), n)	                                                           #Writes isothermextractor.py into place
-Intsetup(species, sorb_el_list, framework, forcefield, '{0}/'.format(xptpath), True, True) #sets up your individual interactions files. It'd be nice to have just 1 set for all 16 gcmcs, but we'll get there
+Intsetup(species, sorb_el_list, framework, forcefield, '{0}/'.format(xptpath), True) #sets up your individual interactions files. It'd be nice to have just 1 set for all 16 gcmcs, but we'll get there
 PressureFileWriter(species, T, satP, istm, '{0}/'.format(xptpath))  #writes your isotherm
 for directory in range (1,17):
     directorymaker('{0}/{1:02d}/'.format(xptpath, directory))
     logger.info("Working in directory {0}:".format('.{0}/{1:02d}/'.format(xptpath, directory)))
     #Intsetup(species, sorb_el_list, framework, forcefield, '{0}/{1:02d}/'.format(xptpath, directory), True, True) #sets up your individual interactions files. It'd be nice to have just 1 set for all 16 gcmcs, but we'll get there
-    GcmcControlChanger(species, sorb_el_list, T, n, framework, '{0}/{1:02d}/'.format(xptpath, directory), '1000000')                            #puts in the gcmc control file
-    PostControlChanger(species, T, n, framework, '{0}/{1:02d}/'.format(xptpath, directory))                            #puts in the post control file
+    GcmcControlChanger(species, sorb_el_list, T, n, framework, '{0}/{1:02d}/'.format(xptpath, directory), '2000000')                            #puts in the gcmc control file
+    PostControlChanger(species, n, framework, '{0}/{1:02d}/'.format(xptpath, directory), directory)                            #puts in the post control file
+    PostControlChanger(species, n, framework, '{0}/{1:02d}/'.format(xptpath, directory), directory, 60)                            #puts in the post control file
     GcmcRunWriter(species, T, framework, parentdir, '{0}/{1:02d}/'.format(xptpath, directory), istm, directory) #puts in the runfile
     #PressureFileWriter(species, T, satP, istm, '{0}/{1:02d}/'.format(xptpath, directory))  #writes your isotherm
-    for i, value in enumerate(istm): #now i make the extra .ctr files for yoru subdirectories
-        GcmcControlChanger(species, sorb_el_list, T, 1, framework, '{0}/{1:02d}/'.format(xptpath, directory), '1', 'RESTARTFILE {0}.{1}.res.{2}'.format(framework, species, i+1), '{0}kpa_restart.ctr'.format(value), value) #makes your control files for all of your pressure points
+    #for i, value in enumerate(istm): #now i make the extra .ctr files for yoru subdirectories
+    #    GcmcControlChanger(species, sorb_el_list, T, 1, framework, '{0}/{1:02d}/'.format(xptpath, directory), '1', 'RESTARTFILE {0}.{1}.res.{2}'.format(framework, species, i+1), '{0}kpa_restart.ctr'.format(value), value) #makes your control files for all of your pressure points
 
 logger.info('Finished writing your simulation files--------------------')
 logger.warning("""Now I'll wrap up.""")
