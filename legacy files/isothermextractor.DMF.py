@@ -7,7 +7,7 @@ def isothermextract(page): #this function scrapes subdirectories of name for iso
     z = 0
     z = int(page) #sets z to be your taskfarm run
 #    print(z)
-    drx = str("./{0:02d}/isotherm.Chloroform" .format(page)) # defines the isotherm
+    drx = str("./{0:02d}/isotherm.DMF" .format(page)) # defines the isotherm
 #    print(drx)
     f = open(drx, "r")
     x = []
@@ -27,7 +27,7 @@ for i in range (1,17): #loops over your 16 isotherms
     SuccessCount = 0 #this variable preents issues downstream if some of your simulations fail
     filenames = listdir("./{0:02d}/" .format(i))
     for file in filenames:
-        if file == "isotherm.Chloroform": #change the np.zeroes to be your results
+        if file == "isotherm.DMF": #change the np.zeroes to be your results
             isothermextract(i)
             SuccessCount += 1
     if SuccessCount != 1: #Checks the abovle was successful
@@ -48,4 +48,4 @@ for i in range (0, 20):
 avgisotherms[0] = x
 avgisotherms[1] = avg
 avgisotherms[2] = stdev
-np.savetxt("../IRMOF1.358.Chloroform.DMFToChloroform.csv", avgisotherms, delimiter=",") #output it to this file
+np.savetxt("../IRMOF1.358.DMF.DMFToChloroform.csv", avgisotherms, delimiter=",") #output it to this file

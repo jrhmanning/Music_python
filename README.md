@@ -1,2 +1,2 @@
 # Music_python
-python tools for using Music
+This git repository is full of python tools for using Music!
