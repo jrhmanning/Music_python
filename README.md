@@ -73,4 +73,14 @@ If you want to run through a taskfarmer to maximise your HPC resources, run thro
 
 -------Some tips and tricks---------
 -
+The most common error in Music comes if any of your molecule or atom filenames are different from the name declared within the file. Always check this first if something goes wrong with these!
+
 Using He as your dummy atom element type makes it a lot easier to visualise later on using VMD etc.
+
+Music hates tabs. Switch them to spaces!
+
+When initialising, music can fail but give a useless error message (e.g. error while attempting to convert string " " to real). This most likely means one of your input files is structured weirdly. Double check these!
+
+In the Music logfile, Music prints out full sections of calculated results (e.g. atom tpye initialisation) only *after* finishgin the whole section. If you can see a section in the log file, that means it ran fine - check the next one instead! 
+
+The source code of Music has a hard limit on the length of a line to be read in (of X characters). This is most relevant in the sorb-sorb file while describing your pmaps - if you're molecule has a lot of different atom types, there may be an error saying Music cannot read a partial filename. The easiest fix for this is to reduce your map filenames until it runs.
