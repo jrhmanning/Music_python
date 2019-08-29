@@ -1,0 +1,83 @@
+-----------------------------------
+Generating new files on 2019-8-28 at 23:20
+-----------------------------------
+[]
+-----------------------------------
+Generating new files on 2019-8-28 at 23:20
+-----------------------------------
+[]
+-----------------------------------
+Generating new files on 2019-8-28 at 23:22
+-----------------------------------
+[]
+-----------------------------------
+Generating new files on 2019-8-29 at 9:14
+-----------------------------------
+[]
+-----------------------------------
+Generating new files on 2019-8-29 at 9:16
+-----------------------------------
+[]
+-----------------------------------
+Generating new files on 2019-8-29 at 9:22
+-----------------------------------
+[]
+-----------------------------------
+Generating new files on 2019-8-29 at 9:29
+-----------------------------------
+[]
+-----------------------------------
+Generating new files on 2019-8-29 at 9:33
+-----------------------------------
+[]
+-----------------------------------
+Generating new files on 2019-8-29 at 9:36
+-----------------------------------
+[]
+-----------------------------------
+Generating new files on 2019-8-29 at 9:36
+-----------------------------------
+[]
+-----------------------------------
+Generating new files on 2019-8-29 at 9:42
+-----------------------------------
+[]
+-----------------------------------
+Generating new files on 2019-8-29 at 9:43
+-----------------------------------
+[]
+-----------------------------------
+Generating new files on 2019-8-29 at 9:47
+-----------------------------------
+[]
+Atom-Atom interaction file written!
+-----------------------------------
+Generating new files on 2019-8-29 at 9:47
+-----------------------------------
+[]
+The elements I'm considering are:
+Atom-Atom interaction file written!
+-----------------------------------
+Generating new files on 2019-8-29 at 9:50
+-----------------------------------
+[]
+The elements I'm considering are: ['Carbon', 'Hydrogen', 'Oxygen', 'Zinc']
+Atom-Atom interaction file written!
+-----------------------------------
+Generating new files on 2019-8-29 at 10:32
+-----------------------------------
+These are my input parameters:
+I'm making an Atom-Atom interaction file in directory ./ for a simulation of sorbent DMFAA on sorbate IRMOF1!
+-----------------------------------
+Generating new files on 2019-8-29 at 10:33
+-----------------------------------
+These are my input parameters:
+I'm making an Atom-Atom interaction file in directory ./ for a simulation of sorbent DMFAA on sorbate IRMOF1!
+You've not told me the names of your sorbent atoms already, so I'll work it out now.
+To do this, I'll look for DMFAA.mol in directory DMFAA.mol and read it for atom names
+Then I'll write a atom-atom interaction file using LB mixing rules, Ewald summation between sorbent molecules, a cutoff of 18 Angstrom, and finallyprint it out to the directory ./
+NB the above info is not auto-updated if you change the Ewald summation and LB mixing, so it might be incorrect.
+I didn't find a file named DMFAA.mol, so I don't have any sorbent atoms to write!
+The list of sorbent atoms I've found are: []
+The elements I'm considering are: ['Carbon', 'Hydrogen', 'Oxygen', 'Zinc']
+Atom-Atom interaction file written!

@@ -71,3 +71,10 @@ IntParams = {	 #Sig (ang), Eps(K), Q (e)   #Here are your atom-atom parameters f
 "O_MeOH":(3.02, 93, -0.7),
 "H_MeOH":(0,0,0.435)
 }
+
+MOF_el_list = {
+'IRMOF1':["Carbon", "Hydrogen", "Oxygen", "Zinc"],
+'UiO-66':["Carbon", "Hydrogen", "Oxygen", "Zirconium"],
+'UiO-67':["Carbon", "Hydrogen", "Oxygen", "Zirconium"],
+'PCN-52':["Carbon", "Hydrogen", "Oxygen", "Zirconium"]
+} #This is a list of elements in your MOF, needed for the control file atom types section

@@ -1,0 +1,31 @@
+#This is an autogenereated interactions file for music, based on the python script Umbrella-v2. It's probably best to look this over before running your sims
+#Lennard-Jones interactions
+Carbon Carbon LJ SIG@3.898 EPS@47.81 HICUT@18
+Carbon Hydrogen LJ OFF
+Carbon Oxygen LJ OFF
+Carbon Zinc LJ OFF
+
+Hydrogen Hydrogen LJ SIG@3.195 EPS@7.642 HICUT@18
+Hydrogen Oxygen LJ OFF
+Hydrogen Zinc LJ OFF
+
+Oxygen Oxygen LJ SIG@3.3 EPS@48.11 HICUT@18
+Oxygen Zinc LJ OFF
+
+Zinc Zinc LJ SIG@2.763 EPS@62.34 HICUT@18
+
+#Coulombic region
+Carbon Carbon COUL OFF
+Carbon Hydrogen COUL OFF
+Carbon Oxygen COUL OFF
+Carbon Zinc COUL OFF
+
+Hydrogen Hydrogen COUL OFF
+Hydrogen Oxygen COUL OFF
+Hydrogen Zinc COUL OFF
+
+Oxygen Oxygen COUL OFF
+Oxygen Zinc COUL OFF
+
+Zinc Zinc COUL OFF
+

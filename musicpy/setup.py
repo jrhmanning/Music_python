@@ -9,21 +9,25 @@ import logging
 import datetime
 import argparse
 
-import Antoine.py
-import Forcefield.py
+import musicpy.Antoine as Antoine
+import musicpy.Forcefield as Forcefield
 now = datetime.datetime.now()
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-handler = logging.FileHandler('{0}/umbrella.log'.format(xptpath))
-handler.setLevel(logging.DEBUG)
-handler2 = logging.StreamHandler()
-handler2.setLevel(logging.INFO)
-logger.addHandler(handler)
-logger.addHandler(handler2)
-logger.debug('-----------------------------------')
-logger.debug('Generating new files on {0}-{1}-{2} at {3}:{4}'.format(now.year, now.month, now.day, now.hour, now.minute))
-logger.debug('-----------------------------------')
+#logger.setLevel(logging.DEBUG)
+#handler = logging.FileHandler('./setup.log')
+#handler.setLevel(logging.DEBUG)
+#handler2 = logging.StreamHandler()
+#handler2.setLevel(logging.INFO)
+#logger.addHandler(handler)
+#logger.addHandler(handler2)
+#logger.debug('-----------------------------------')
+#logger.debug('Generating new files on {0}-{1}-{2} at {3}:{4}'.format(now.year, now.month, now.day, now.hour, now.minute))
+#logger.debug('-----------------------------------')
+#logger = logging.getLogger('foo').addHandler(logging.NullHandler())
+
+
+######
 
 
 
@@ -137,19 +141,21 @@ def directorymaker(dxout = "./"):
     logger.debug("Directory {0} written!".format(dxout))
 
 #This writes your atom-atom forcefield information based on the above dictionary at the start of the document
-def AtmAtmMover(elements, forcefield, dxout = "./mapgen/test/"):
+def AtmAtmMover(logger, elements, forcefield, hicut=18, framework='IRMOF1', dxout = "./mapgen/test/"):
     tot_el_list = []
-    tot_el_list.append(MOF_el_list) #takes the global list from the preamble to getyour mof molecule atom types
+    for i in Forcefield.MOF_el_list[framework]:
+        tot_el_list.append(i) #takes the global list from the preamble to getyour mof molecule atom types
+    logger.info('The elements I\'m considering are: {0}'.format(tot_el_list))
     tot_el_list.append(elements) #reads what elements are in yoru sorbent
     hicut = 18 #sets your hicut in A
     with open("{0}atom_atom_file" .format(dxout), "w") as file:
         file.write("""#This is an autogenereated interactions file for music, based on the python script Umbrella-v2. It's probably best to look this over before running your sims\n#Lennard-Jones interactions\n""")
-        for i in range (0, len(MOF_el_list)):
-            file.write("""{0} {0} LJ SIG@{1} EPS@{2} HICUT@{3}\n""".format(MOF_el_list[i], Forcefield.IntParams[MOF_el_list[i]][0], Forcefield.IntParams[MOF_el_list[i]][1], hicut)) #LJ self-parameters for the MOF-MOF interactions
-            for j in range (i+1, len(MOF_el_list)):
-                file.write("""{0} {1} LJ OFF\n""".format(MOF_el_list[i], MOF_el_list[j])) #LJ parameters for MOF 'i j' pairs, which are generally off
+        for i in range (0, len(Forcefield.MOF_el_list[framework])):
+            file.write("""{0} {0} LJ SIG@{1} EPS@{2} HICUT@{3}\n""".format(Forcefield.MOF_el_list[framework][i], Forcefield.IntParams[Forcefield.MOF_el_list[framework][i]][0], Forcefield.IntParams[Forcefield.MOF_el_list[framework][i]][1], hicut)) #LJ self-parameters for the MOF-MOF interactions
+            for j in range (i+1, len(Forcefield.MOF_el_list[framework])):
+                file.write("""{0} {1} LJ OFF\n""".format(Forcefield.MOF_el_list[framework][i], Forcefield.MOF_el_list[framework][j])) #LJ parameters for MOF 'i j' pairs, which are generally off
             for k in elements:
-                file.write("""{0} {1} LJ SIG@{3} EPS@{4} HICUT@{2}\n""".format(MOF_el_list[i], k, hicut, str(round((Forcefield.IntParams[MOF_el_list[i]][0]+Forcefield.IntParams['{0}_{1}'.format(k.split('_')[0], forcefield)][0])/2, 3)), str(round(sqrt(Forcefield.IntParams[MOF_el_list[i]][1]*Forcefield.IntParams['{0}_{1}'.format(k.split('_')[0], forcefield)][1]), 3)))) #MOF-fluid forcefield paramters
+                file.write("""{0} {1} LJ SIG@{3} EPS@{4} HICUT@{2}\n""".format(Forcefield.MOF_el_list[framework][i], k, hicut, str(round((Forcefield.IntParams[Forcefield.MOF_el_list[framework][i]][0]+Forcefield.IntParams['{0}_{1}'.format(k.split('_')[0], forcefield)][0])/2, 3)), str(round(sqrt(Forcefield.IntParams[Forcefield.MOF_el_list[framework][i]][1]*Forcefield.IntParams['{0}_{1}'.format(k.split('_')[0], forcefield)][1]), 3)))) #MOF-fluid forcefield paramters
             file.write("\n")
         for i in range (0, len(elements)):
             raw_el = str(elements[i].split('_')[0] + '_' + str(forcefield)) #This line says which interaction types your fluid will take from the dictionary at the start of the script
@@ -159,12 +165,12 @@ def AtmAtmMover(elements, forcefield, dxout = "./mapgen/test/"):
                 file.write("""{0} {1} LJ SIG@{3} EPS@{4} HICUT@{2}\n""".format(elements[i], elements[j], hicut, str(round((Forcefield.IntParams['{0}_{1}'.format(elements[i].split('_')[0], forcefield)][0]+Forcefield.IntParams['{0}_{1}'.format(elements[j].split('_')[0], forcefield)][0])/2, 3)), str(round(sqrt(Forcefield.IntParams['{0}_{1}'.format(elements[i].split('_')[0], forcefield)][1]*Forcefield.IntParams['{0}_{1}'.format(elements[j].split('_')[0], forcefield)][1]),3)))) #LJ parameters for the fluid-fluid 'i j' interactions
             file.write("\n")
         file.write("#Coulombic region\n")
-        for i in range (0, len(MOF_el_list)):
-            file.write("""{0} {0} COUL OFF\n""".format(MOF_el_list[i])) #MOF-MOF self-coulombic interactions (off)
-            for j in range (i+1, len(MOF_el_list)):
-                file.write("""{0} {1} COUL OFF\n""".format(MOF_el_list[i], MOF_el_list[j])) #MOF-MOF interactiosn (also off)
+        for i in range (0, len(Forcefield.MOF_el_list[framework])):
+            file.write("""{0} {0} COUL OFF\n""".format(Forcefield.MOF_el_list[framework][i])) #MOF-MOF self-coulombic interactions (off)
+            for j in range (i+1, len(Forcefield.MOF_el_list[framework])):
+                file.write("""{0} {1} COUL OFF\n""".format(Forcefield.MOF_el_list[framework][i], Forcefield.MOF_el_list[framework][j])) #MOF-MOF interactiosn (also off)
             for k in elements:
-                file.write("""{0} {1} COUL OFF\n""".format(MOF_el_list[i], k)) #MOF-fluid pairwise interactions (definitely off, use a map for this)
+                file.write("""{0} {1} COUL OFF\n""".format(Forcefield.MOF_el_list[framework][i], k)) #MOF-fluid pairwise interactions (definitely off, use a map for this)
             file.write("\n")
         for i in range (0, len(elements)):
             file.write("""{0} {0} SUM FAST EWALD HICUT@{1}\n""".format(elements[i], hicut)) #fluid fluid self-interactions - use wolf cpoulombic. partial charge values are stored in the molecule files - see molfilewriter
@@ -481,9 +487,9 @@ def GcmcControlChanger(species, elements, T, n, framework, dirout, iterations = 
     logger.debug(elements)
     x = random.randint(0,99999) #sets your random seed
     if isinstance(elements, list): #lets you use multi-element sorbent molecules
-        n_species = len(MOF_el_list)+len(elements) #sets the total number of element types in your gcmc
+        n_species = len(Forcefield.MOF_el_list[framework])+len(elements) #sets the total number of element types in your gcmc
     elif isinstance(elements, int): #lets you use single-element sorbents
-        n_species = len(MOF_el_list)+elements
+        n_species = len(Forcefield.MOF_el_list[framework])+elements
     with open("{0}{1}" .format(dirout, name), 'w') as file:
         file.write("""#This control file was written by the python scrpt umbrellav2-6 You probably ought to check me before use!
 ------ General Information ------------------------------------------
@@ -501,7 +507,7 @@ def GcmcControlChanger(species, elements, T, n, framework, dirout, iterations = 
 {3}                    # number of atomic types            \n\n""".format(species, framework, x, n_species, iterations, 1 if Restart == None else 30))
         for i in elements:
             file.write("""{0}   #atom type\n{0}.atm #atom file name\n\n""".format(i))
-        for i in MOF_el_list:
+        for i in Forcefield.MOF_el_list[framework]:
             file.write("""{0}   #atom type\n{0}.atm #atom file name\n\n""".format(i))
         file.write("""------ Molecule Types -------------------------------------------------
 2                    # number of sorbate types
