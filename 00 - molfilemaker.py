@@ -41,6 +41,6 @@ logger.debug('-----------------------------------')
 species = 'EG_TRAPPE'
 
 
-atoms, connections = setup.dataextract(species)
-bondlengths = setup.connectiontypeswrite(atoms, connections)
-setup.molwrite(species, atoms, bondlengths, connections)
+atoms, connections = setup.dataextract(logger, species)
+bondlengths = setup.connectiontypeswrite(logger, atoms, connections)
+setup.molwrite(logger, species, atoms, bondlengths, connections)
