@@ -38,4 +38,4 @@ framework = 'YYYY'
 parentdir = Path('/home/r/jrhm21/scratch/03_music_chloroform_forcefield/')
 targetfir= Path('./experiments/{0}/{1}/'.format(species[-1], T))
 ############
-setup.TaskfarmRunWriter(species[-1], T, framework, parentdir, targetdir)
+setup.TaskfarmRunWriter(logger, species[-1], T, framework, parentdir, targetdir)
