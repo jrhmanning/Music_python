@@ -39,4 +39,4 @@ n  20
 framework = 'YYYY'
 targetdir = Path('./experiments/{0}/{1}/'.format(species[-1], T))
 ##################
-setup.IsothermExtractMover(species[-1], T, framework, targetdir, n)
+setup.IsothermExtractMover(logger, species[-1], T, framework, targetdir, n)
