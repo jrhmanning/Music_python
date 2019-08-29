@@ -1,0 +1,104 @@
+#### Molecule construction information
+
+# Basic molecule information
+Molecule_Name: [MoleculeName]
+			#Name of your molecule
+
+# Atom coordinates
+Coord_Info: {listed, filename} {cartesian, other} {rigid, rigidrot, nalkane, branched, none}	
+			#All sorts of atom coordinate explanation options
+			#listed = see the list below; filename = call file?
+			#cartesian = xyz notation, other = polar?
+			#rigid = rigid molecule
+			#rigidrot = rigid but with 1 rotatable bond e.g. methanol
+			#nalkane = unitedatom n-alkanes
+			#branched =  non-ring branched molecules - sourced in branchedcoords.f90
+			#none = no bonds present?
+[n] 		# number of atoms in the molecule
+[Atom#] [x coord] [y coord] [z coord] [Atom Name] [Charge] [Set] [Type] 						
+			#units: n/a Angstrom Angstrom Angstrom n/a e? ??? ???
+
+# Connectivity info format
+Connect_Info: {listed,generate,filename}														
+			# listed = see list below - music expects to see both types of bonds (e.g. Me-Me) and explicit bonding pairs in terms of atom indices (e.g. 1 2 for atom 1 bonds to atom 2)
+			# generate = see list below - expects only to receive bond types (e.g. Me-Me)
+			# filename = see file
+[n] # number of bond types {listed, to generate}
+	if "listed"
+    [Atom Name] [Atom Name] [Bond Length]														
+			#atom names as listed above, bond length in Angstrom
+    [Atom#] [List of Connected Atom#] 
+	if "generate"
+    [Atom Name] [Atom Name] [distance] [optional tolerance]										
+			#atoms names as listed above, distance and tolerance in Angstrom (?)
+
+# Degrees of freedom (optional)
+Molecule\_DOF: [degrees of freedom]																
+			#3 for monoatomic, 5 for rigid linear and 6 for  rigid nonlinear, if flexible then generally 3*number of atoms 
+
+#### Intramolecular Interaction Parameters
+			#ignore if using Rigid coordinates
+
+# Bond stretching format
+Bond_Stretch: {listed,generate,filename} {Harmonic, Morse} {fast,slow}							
+			# listed/generate/filename is same as above
+			# Harmonic and morse are the two bonding models. Impacts the stretch model parameters listed below
+			# fast/slow = fast or slow interaction
+[n] # number of bonds {listed, to generate}
+	if "listed"
+[Atom#] [Atom#] [bond stretch model parameters]
+			# parameters: for harmonic there's two: spring constant in [mass/time^2] and Angstrom
+			# for morse there's 3: Well depth in [energy] (kcal/mol?), well width in Angstrom, and equilibrium bond length in Angstrom
+	if "generate"
+[Atom Name] [Atom Name] [bond stretch model parameters]
+
+# Bond constraints
+			# contrains bond lengths to be equal to a certian length
+Bond\_Constraints: {listed, generate, filename} {Evansmorris} {fast,slow}						
+			# listed/generate/filename is same as above
+			# Evansmorriss model is listed according to the model set out in 10.1063/1.450613
+			# fast/slow = fast or slow interaction
+[n] # number of constraints {listed, types to generate}
+	if "listed"
+[Atom#] [Atom#] [bond constraint model parameters] 												
+			# Atom indices and contrained bond lengths (in Angstrom?), accepts a variable number of model parameters
+	if "generate"
+[Atom Name] [Atom Name] [bond constraint model parameters] 
+
+# Bond bending format
+Bond_Bending: {listed,generate,filename} {Harmonica} {fast,slow}
+			# listed/generate/filename is same as above
+			# Harmonica is the Harmonic Angle model
+			# fast/slow = fast or slow interaction
+[n] # number of bending centers {listed, to generate}
+	if "listed"
+[Atom#] [Atom#] [Atom#] [bond bending model parameters]
+			# Angle around three atoms bending model parameters are: ktheta (kcal/mol), kthetaeq (deg)
+	if "generate"
+[Atom Name] [Atom Name] [Atom Name] [bond bending model parameters]
+
+
+# torsion info format
+Torsion\_Info: {listed,generate,filename} {cosexpansion} {fast,slow}
+			# listed, generate, filename as above
+			# cosexpansion = the sandard cosine expansion method for doing bond torsions. (see cosexpansion.f90)
+			# fast/slow = fast or slow interaction		
+[n] # number of torsion {listed, types to generate}
+	if "listed"
+[Atom#] [Atom#] [Atom#] [Atom#] [torsion model parameters]										
+			#4 atom indices followed by cos expansion amplitude values. It expect 6. Units are likely kcal/mol, but maybe also kj/mol
+	if "generate"
+[Atom Name] [Atom Name] [Atom Name] [Atom Name] [torsion model parameters]
+
+# 1-4 Interactions format
+			# LJ interactions across a dihedral. The syntax here doesn't match with other examples though - use with care!
+1-4\_Info: {listed,generate,filename} {lj} {fast,slow}
+			# listed/generate/filename is same as above
+			# Lennard jones interactions between 1-4 atoms 
+			# fast/slow = fast or slow interaction
+[n] # number of 1-4 interactions {listed, types to generate}
+	if "listed"
+[Atom#] [Atom#] [1-4 interaction model parameters]												
+			#I don't know what form Music wants for the interaction parameters
+	if "generate"
+[Atom Name] [Atom Name] [1-4 interaction model parameters]
