@@ -1,0 +1,27 @@
+##The directory tree this python code expects looks a lot like this (as of 29-aug-19):
+### "Music"
+###  | -- your python files for setting things up
+###  | -- "atoms" directory
+###  | -- "molecules" directory
+###  | -- "maps" directory
+###  | -- "mapgen" directory
+###  |
+###  | 
+###  \ -- "experiments"
+###          | 
+###          \ -- *your sorbent name*
+###                 |
+###                 \ *your simulation temperature*
+###				            		| -- run.taskfarmer
+###					             	| -- taskfarm
+###					             	| -- atom_atom_file
+###					             	| -- sorb_sorb_file
+###					             	| -- Intramolecular_file
+###					             	| -- pressure.dat
+###					             	| -- isothermextractor.py
+###					             	| -- "postfiles" direcctory
+###					             	| -- "final configs" directory
+###				            		\ -- 01-16
+###						        	        | -- gcmc.ctr
+###						        	        | -- post.ctr
+###						        	        \ -- run.gcmc
