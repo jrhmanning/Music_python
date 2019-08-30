@@ -40,6 +40,7 @@ logger.debug('-----------------------------------')
 species = 'DMFAA'
 forcefield = 'DMFAA' #for example
 framework = 'IRMOF1'
+coultype = 'Ewald' # 'Ewald', 'Wolf', or 'None' for different fluid-fluid coulombic interactions)
 cutoff=18
 speciespath = Path('./{0}.mol'.format(species))
 targetdirectory = './'
@@ -83,4 +84,12 @@ logger.info('The list of sorbent atoms I\'ve found are: {0}'.format(sorb_el_list
 ###############
 
 
-setup.AtmAtmMover(logger, sorb_el_list, forcefield,cutoff, framework, targetdirectory)
+setup.AtmAtmMover(
+    logger, #this variablwe logs out to the one made by this file
+    sorb_el_list, #Your elements to be considered in the fluid
+    forcefield, #Your forcefield tag for these elements
+    coultype, #Your fluid-fluid coulombic interaction model
+    cutoff, #Your nonbonded interaction cutoff distance
+    framework, #Your framework name, to look up in musicpy.Forcefield.MOF_el_list
+    targetdir #Where the atom_atom_interaction file will be spit out to
+)
