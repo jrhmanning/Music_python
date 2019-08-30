@@ -8,6 +8,7 @@ from pathlib import Path
 import logging
 import datetime
 import argparse
+import sys
 
 import musicpy.Antoine as Antoine
 import musicpy.Forcefield as Forcefield
@@ -148,44 +149,88 @@ def directorymaker(logger, dxout = "./"):
     logger.debug("Directory {0} written!".format(dxout))
 
 #This writes your atom-atom forcefield information based on the above dictionary at the start of the document
-def AtmAtmMover(logger, elements, forcefield, hicut=18, framework='IRMOF1', dxout = "./mapgen/test/"):
-    tot_el_list = []
-    for i in Forcefield.MOF_el_list[framework]:
-        tot_el_list.append(i) #takes the global list from the preamble to getyour mof molecule atom types
-    logger.info('The elements I\'m considering are: {0}'.format(tot_el_list))
-    tot_el_list.append(elements) #reads what elements are in yoru sorbent
-    hicut = 18 #sets your hicut in A
-    with open("{0}atom_atom_file" .format(dxout), "w") as file:
-        file.write("""#This is an autogenereated interactions file for music, based on the python script Umbrella-v2. It's probably best to look this over before running your sims\n#Lennard-Jones interactions\n""")
-        for i in range (0, len(Forcefield.MOF_el_list[framework])):
-            file.write("""{0} {0} LJ SIG@{1} EPS@{2} HICUT@{3}\n""".format(Forcefield.MOF_el_list[framework][i], Forcefield.IntParams[Forcefield.MOF_el_list[framework][i]][0], Forcefield.IntParams[Forcefield.MOF_el_list[framework][i]][1], hicut)) #LJ self-parameters for the MOF-MOF interactions
-            for j in range (i+1, len(Forcefield.MOF_el_list[framework])):
-                file.write("""{0} {1} LJ OFF\n""".format(Forcefield.MOF_el_list[framework][i], Forcefield.MOF_el_list[framework][j])) #LJ parameters for MOF 'i j' pairs, which are generally off
-            for k in elements:
-                file.write("""{0} {1} LJ SIG@{3} EPS@{4} HICUT@{2}\n""".format(Forcefield.MOF_el_list[framework][i], k, hicut, str(round((Forcefield.IntParams[Forcefield.MOF_el_list[framework][i]][0]+Forcefield.IntParams['{0}_{1}'.format(k.split('_')[0], forcefield)][0])/2, 3)), str(round(sqrt(Forcefield.IntParams[Forcefield.MOF_el_list[framework][i]][1]*Forcefield.IntParams['{0}_{1}'.format(k.split('_')[0], forcefield)][1]), 3)))) #MOF-fluid forcefield paramters
-            file.write("\n")
-        for i in range (0, len(elements)):
-            raw_el = str(elements[i].split('_')[0] + '_' + str(forcefield)) #This line says which interaction types your fluid will take from the dictionary at the start of the script
-            file.write("""{0} {0} LJ SIG@{1} EPS@{2} HICUT@{3}\n""".format(elements[i], Forcefield.IntParams[raw_el][0], Forcefield.IntParams[raw_el][1], hicut)) #LJ self-parameters for the fluid-fluid interactions
-            for j in range (i+1, len(elements)):
-                logger.debug('i = '+ str(i)+ ', j= '+str(j) )
-                file.write("""{0} {1} LJ SIG@{3} EPS@{4} HICUT@{2}\n""".format(elements[i], elements[j], hicut, str(round((Forcefield.IntParams['{0}_{1}'.format(elements[i].split('_')[0], forcefield)][0]+Forcefield.IntParams['{0}_{1}'.format(elements[j].split('_')[0], forcefield)][0])/2, 3)), str(round(sqrt(Forcefield.IntParams['{0}_{1}'.format(elements[i].split('_')[0], forcefield)][1]*Forcefield.IntParams['{0}_{1}'.format(elements[j].split('_')[0], forcefield)][1]),3)))) #LJ parameters for the fluid-fluid 'i j' interactions
-            file.write("\n")
-        file.write("#Coulombic region\n")
-        for i in range (0, len(Forcefield.MOF_el_list[framework])):
-            file.write("""{0} {0} COUL OFF\n""".format(Forcefield.MOF_el_list[framework][i])) #MOF-MOF self-coulombic interactions (off)
-            for j in range (i+1, len(Forcefield.MOF_el_list[framework])):
-                file.write("""{0} {1} COUL OFF\n""".format(Forcefield.MOF_el_list[framework][i], Forcefield.MOF_el_list[framework][j])) #MOF-MOF interactiosn (also off)
-            for k in elements:
-                file.write("""{0} {1} COUL OFF\n""".format(Forcefield.MOF_el_list[framework][i], k)) #MOF-fluid pairwise interactions (definitely off, use a map for this)
-            file.write("\n")
-        for i in range (0, len(elements)):
-            file.write("""{0} {0} SUM FAST EWALD HICUT@{1}\n""".format(elements[i], hicut)) #fluid fluid self-interactions - use wolf cpoulombic. partial charge values are stored in the molecule files - see molfilewriter
-            for j in range (i+1, len(elements)):
-                file.write("""{0} {1} SUM FAST EWALD HICUT@{2}\n""".format(elements[i], elements[j], hicut)) #fluid fluid 'i j' interactions - use wolf cpoulombic. partial charge values are stored in the molecule files - see molfilewriter
-            file.write("\n")
-    logger.debug("Atom-Atom interaction file written!")
+def AtmAtmMover(logger, elements, forcefield,coultype=None, hicut=18, framework='IRMOF1', dxout = "./mapgen/test/"):
+	#Find the MOF element list
+    try:
+        Forcefield.MOF_el_list[framework]
+	except KeyError:
+	    logger.warning('I failed to find yuor MOF element list. Go into the Forcefield file and make sure it\'s in there before continuing!')
+		sys.exit(0)
+	
+	Frame_el = Forcefield.MOF_el_list[framework]
+	
+    logger.info('The elements I\'m considering in your framework are: {0}\n The elements I\'m considering in your sorbent are: {1}'.format(Frame_el, elements))
 
+    with open("{0}atom_atom_file" .format(dxout), "w") as f:
+        f.write("""#This is an autogenereated interactions file for music, based on the python script Umbrella-v2. It's probably best to look this over before running your sims!\n""")
+        f.write("Framework-Framework interactions (usually off)\nLennar-Jones\n")
+		for i in range(len(Frame_el)):
+		    f.write(LJPrep(True, Frame_el[i], Frame_el[i], hicut), '\n')
+			for j in range(i+1, len(Frame_el))
+			    f.write(LJPrep(False), '\n')
+			f.write('\n')
+			
+		f.write('Coulombic\n')	
+		for i in range(len(Frame_el)):
+		    f.write(CoulPrep(False), '\n')
+			for j in range(i+1, len(Frame_el))
+			    f.write(CoulPrep(False), '\n')
+			f.write('\n')		
+
+        f.write("Fluid-Fluid interactions\nLennard-Jones\n")
+		for i in range(len(elements)):
+		    f.write(LJPrep(True, elements[i], elements[i], hicut), '\n')
+			for j in range(i+1, len(elements))
+			    f.write(LJPrep(True, elements[i], elements[j], hicut), '\n')
+			f.write('\n')
+	
+        f.write('Coulombic\n')
+		for i in range(len(elements)):
+		    f.write(CoulPrep(coultype, elements[i], elements[i], hicut), '\n')
+			for j in range(i+1, len(elements))
+			    f.write(CoulPrep(coultype, elements[i], elements[j], hicut), '\n')
+			f.write('\n')
+
+        f.write("Fluid-Framework interactions\nLennard-Jones\n")
+		for i in range(len(elements)):
+			for j in range(len(Frame_el))
+			    f.write(LJPrep(None), '\n')
+			f.write('\n')
+	
+        f.write('Coulombic\n')
+		for i in range(len(elements)):
+			for j in range(len(Frame_el))
+			    f.write(CoulPrep(None), '\n')
+			f.write('\n')
+    logger.debug("Atom-Atom interaction file written in directory {0}!".format(dxout))
+
+def CoulPrep(type, i=None, j=None, hicut=None):
+    if type == 'Wolf':
+	    return '{0} {1} WFCOUL  HICUT@{2}\n'.format(i, j, hicut)
+	elif type == 'Ewald':
+	    return '{0} {1} SUM FAST EWALD HICUT@{2}\n'.format(i, j, hicut)
+	elif type == None:
+        return '{0} {1} COUL OFF\n'.format(i, j)
+	else:
+	    panic
+		
+
+def LJPrep(on-off, i=None, j=None, hicut=None):
+    if on-off:
+	    sig = LBmixSig(Forcefield.IntParams[i][0], Forcefield.IntParams[i][0])
+	    eps = LBmixEps(Forcefield.IntParams[i][1], Forcefield.IntParams[i][1])
+        return '{0} {1} LJ SIG@{2} EPS@{3} HICUT@{4}'.format(i, j, sig, eps, hicut)	
+	else:
+	    return '{0} {1} LJ OFF'.format(i, j)
+
+def LBmixSig(a, b):
+    result = float(a)+float(b)/2
+	return str(round(result,3))
+
+def LBmixEps(a, b):
+    result = sqrt(float(a)*float(b))
+	return str(round(result,3))
+	
 #This writes your sorb-sorb file telling music which intermolecular interactions are on
 def SorbSorbWriter(logger, species, elements,framework, dxout = "./mapgen/", pmap = True, emap = False):
     filename = "sorb_sorb_file"
@@ -252,7 +297,7 @@ def IntraWriter(logger, species, elements, framework, dxout = "./mapgen/"):
 
 #bundles the above 3 functions into one for simplicity
 def Intsetup(logger, mol_name, elements, framework, forcefield, dxout, pmap = True, emap = False):
-    AtmAtmMover(logger, elements, forcefield, dxout)
+    AtmAtmMover(logger, elements, forcefield,None, 18, framework, dxout)
     SorbSorbWriter(logger, mol_name, elements, framework, dxout, pmap, emap)
     IntraWriter(logger, mol_name, elements, framework, dxout)
 
