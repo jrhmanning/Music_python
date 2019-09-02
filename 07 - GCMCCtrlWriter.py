@@ -45,7 +45,7 @@ T = 298
 n = 9
 targetdir = Path('{0}/{1:02d}/'.format(xptpath, directory))
 ##################
-setup.GcmcControlChanger(logger, species[-1], sorb_el_list, T, n, framework, tagretdir, '1000000') #, 'RESTARTFILE {0}.{1}.res.{2}'.format(framework, species[-1], 20)) #for production runs, these 3 optional extra arguments are for running restarts.
+setup.GcmcControlChanger(logger, species[-1], sorb_el_list, T, n, framework, targetdir, '1000000') #, 'RESTARTFILE {0}.{1}.res.{2}'.format(framework, species[-1], 20)) #for production runs, these 3 optional extra arguments are for running restarts.
 #for i, value in enumerate(istm): #now i make the extra .ctr files for yoru subdirectories
 #    setup.GcmcControlChanger(logger, species[-1], sorb_el_list, T, 1, framework, targetdir, '1', 'RESTARTFILE {0}.{1}.res.{2}'.format(framework, species[-1], i+1), '{0}kpa_restart.ctr'.format(value), value) #makes your control files for all of your pressure points
 

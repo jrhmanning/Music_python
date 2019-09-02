@@ -34,15 +34,15 @@ logger.debug('-----------------------------------')
 logger.debug('Generating new files on {0}-{1}-{2} at {3}:{4}'.format(now.year, now.month, now.day, now.hour, now.minute))
 logger.debug('-----------------------------------')
 ##################
-species = ['DMF']
-T = 298
-n = 9
-minrelpress = -1.5
-maxrelpress = -1
-targetdir = Path('./experiments/{0}/{1}/'.format(species[-1], T))
+species = ['DMF'] #NAme of your sorbent, is used to look up anointe equation parameters in Antoine.py
+T = 298 #Temperature for antoine equation
+iso_length = 9 #numebr of isotherm points
+minrelpress = -1.5 #Minimum pressure to be considered, as a fration of saturation pressure (pMin = pSat*10^minrelpress) 
+maxrelpress = -1 #maximum pressure to be considered, accoring to the above equation
+targetdir = Path('./experiments/{0}/{1}/'.format(species[-1], T)) #directory you're putting your experiment files into
 #################
 ###########################
-satP = setup.pSat(species[-1], T)
-istm = setup.isothermcalculator(satP, n, minrelpress, maxrelpress)
+satP = setup.pSat(logger, species[-1], T)
+istm = setup.isothermcalculator(logger, satP, iso_length, minrelpress, maxrelpress)
 #print(istm)
-setup.PressureFileWriter(species[-1], T, satP, istm, targetdir)
+setup.PressureFileWriter(logger, species[-1], T, satP, istm, targetdir)

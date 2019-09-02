@@ -442,7 +442,7 @@ def PressureFileWriter(logger, species, T, Pressure, isotherm, dirout):         
     logger.info('Pressure file {0}pressure.{1}.{2}.dat successfully written!'.format(dirout, species, T))
 
 #Writes a bashscript for taskfarming yuor simulations, compatible with SLURM
-def TaskfarmRunWriter(logger, species, T, framework, parentdir, dirout):
+def TaskfarmRunWriter(logger, species, T, framework, parentdir, dirout, number = 16):
     with open("{0}run.taskfarmer" .format(dirout), 'w') as file:
         file.write("""#!/usr/bin/env bash
 #SBATCH --job-name={0}.{2}.{1}k
@@ -471,10 +471,10 @@ python ./isothermextractor.py
 #python ./ResultsParser.py""".format(species, T, framework, dirout, parentdir)) #uses my isotherm extractor script to pull all your isotherms out and put them into .csv files in the directory abocve the taskfarm run file
     os.chmod("{0}run.taskfarmer" .format(dirout), 0o777)   #chmod so it's fully rwx for everyone (0o denotes the following number is in octal)
     with open("{0}taskfarm" .format(dirout), 'w') as file1: #Writes the commands to taskfarm into a separate taskfram file
-        for i in range(1,17):
+        for i in range(1,number+1):
             file1.write("bash ./{0:02d}/run.gcmc\n".format(i))
     with open("{0}taskfarm.backup" .format(dirout), 'w') as file2: #writes a backup you can restore the above to if there's a bug
-        for i in range(1,17):
+        for i in range(1,number+1):
             file2.write("bash ./{0:02d}/run.gcmc\n".format(i))
     logger.debug("Taskfarm things file written!")
 
@@ -652,7 +652,7 @@ GCMC                            # Type of simulation GCMC, NVTMC , MD ....
     logger.debug("Post control file written!")
 
 #Writes a bashscript for actually running your simulations, compatible with SLURM
-def GcmcRunWriter(logger, species, T, framework, parentdir, dirout, isotherm, iteration):
+def GcmcRunWriter(logger, species, T, framework, parentdir, dirout, isotherm, iteration, location='../'):
     with open("{0}run.gcmc".format(dirout), 'w') as file:
         file.write("""#!/usr/bin/env bash
 #SBATCH --job-name={0}.{1}
@@ -678,10 +678,10 @@ ln -s ../../../../atoms atoms
 ln -s ../../../../molecules molecules
 ln -s ../../../../maps/{0} maps
 
-ln -s ../atom_atom_file atom_atom_file
-ln -s ../intramolecular_file intramolecular_file
-ln -s ../sorb_sorb_file sorb_sorb_file
-ln -s ../pressure.{0}.{1}.dat pressure.{0}.{1}.dat
+ln -s {5}atom_atom_file atom_atom_file
+ln -s {5}intramolecular_file intramolecular_file
+ln -s {5}sorb_sorb_file sorb_sorb_file
+ln -s {5}pressure.{0}.{1}.dat pressure.{0}.{1}.dat
 
 #set the paths for atoms, molecules, pmaps, and emaps WARNING softcoded in umbrella, check it's right!
 export ATOMSDIR=atoms
@@ -693,12 +693,12 @@ export EMAPDIR=maps
 # -- Run
 music_gcmc gcmc.ctr > logfile.gcmc #runs your main simulation
 music_post full.post.ctr > logfile.post.full #runs your postprocessing
-cp {4:02d}.full.postfile ../fullpostfiles/
+cp {4:02d}.full.postfile {5}fullpostfiles/
 music_post trunc.post.ctr > logfile.post.trunc #runs your postprocessing
-cp {4:02d}.trunc.postfile ../truncpostfiles/
+cp {4:02d}.trunc.postfile {5}truncpostfiles/
 
 
-""".format(species, T, dirout, parentdir, iteration))
+""".format(species, T, dirout, parentdir, iteration, location))
         for i, value in enumerate(isotherm): #for each isotherm point you're simulating
             file.write('music_gcmc {0}kpa_restart.ctr > {1}_restart.logfile\nmv finalconfig.xyz {3:02d}.{2}.{0}kpa.xyz\n'.format(value, int(i)+1, framework, int(iteration))) #set up a simulation to generate a new xyz file and move it to be names after the pressure point 
     os.chmod("{0}run.gcmc" .format(dirout), 0o777) #chmod so it's fully rwx for everyone (0o denotes the following number is in octal)
