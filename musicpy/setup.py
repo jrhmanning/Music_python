@@ -618,6 +618,132 @@ FIXED NULL
 Energy, position, pair_energy  # contents of datafile""".format(Restart, framework))
     logger.debug("GCMC control file written!")
 
+def GcmcControlChanger2(dirout, filename, species, sorbent, n_iter, start_num, sorbent_elements, framework_elements, sorbent_molecules, 
+framework_molecules,n_a, n_b, n_c,aa_filename, mm_filename, intra_filename, T,isotherm_length, pressure_points, restartfile, movie_name):
+	with open("{0}{1}" .format(dirout, filename), 'w') as f:
+	    f.write(GenInfo(species, sorbent, n_iter, start_num))
+		f.write(AtomTypes(sorbent_elements, framework_elements))
+		f.write(MoleculeTypes(sorbent_molecules, framework_molecules))
+		f.write(SimCell(framework_molecules, n_a, n_b, n_c))
+		f.write(ForcefieldInfo(aa_filename, mm_filename, intra_filename))
+		f.write(IdealParams(sorbent_molecules))
+		f.write(GCMCInfo(T, isotherm_length, sorbent_molecules, pressure_points))
+		f.write(ConfigInit(sorbent_molecules, framework_molecules, restartfile = None))
+		f.write(DatafileInfo())
+		f.write(Movie(movie_name, n_iter))
+			
+def GenInfo(species, sorbent, n_iter, start_num):
+    seed = random.randint(0,99999) #sets your random seed
+	output = '''#This control file was written by the python scrpt umbrellav2-6 You probably ought to check me before use!
+------ General Information ------------------------------------------
+{0} molecule in {1} 
+{2}              # No. of iterations, defaults to 750000
+{3}                # No. of steps between writes to output/log file
+{4}                # No. of steps between writes to crash file
+{5}                  # No. of steps between writes to config. file
+{6}                   # Start numbering simulations fromhere. defaults to 1 for production run, 30 for config runs
+{7}                #random seed
+3                    # specifies contents of config file, outdated?
+{1}.{0}.res         # Restart File to write to
+{1}.{0}.con          # Configuration File\n'''.format(species, sorbent, n_iter, max(10000, n_iter/20), max(100000, n_iter/10), max(1000, n_iter/1000), start_num, seed)
+    return output
+
+def AtomTypes(sorbent_elements, framework_elements):
+    output = []
+    output.append('''------ Atomic Types --------------------------------------------------
+{0} #total number of atom types\n\n'''.format(len(sorbent_elements)+len(framework_elements)))
+    for i in sorbent_elements:
+        output.append("""{0}   #atom type\n{0}.atm #atom file name\n\n""".format(i)))
+    for i in framework_elements:
+        output.append("""{0}   #atom type\n{0}.atm #atom file name\n\n""".format(i))
+    return ''.join(output)
+
+def MoleculeTypes(sorbent_molecules, framework_molecules):
+    if isinstance(sorbent_molecules, str):
+	    sorbent_molecules = [sorbent_molecules]
+    if isinstance(framework_molecules, str):
+	    sorbent_molecules = [framework_molecules]
+	output = []
+	output.append('''------ Molecule Types -------------------------------------------------
+{0}                    # number of sorbate types\n\n'''.format(len(sorbent_molecules)+len(framework_molecules)))
+    for i in sorbent_molecules:
+        output.append("""{0}   #mol type\n{0}.mol #mol file name\n\n""".format(i)))
+    for i in framework_molecules:
+        output.append("""{0}   #mol type\n{0}.mol #mol file name\n\n""".format(i))
+    return ''.join(output)
+
+def SimCell(framework_molecules, n_a, n_b, n_c):
+    output = '''------ Simulation Cell Information ------------------------------------
+{0}.mol                # Fundamental cell file
+{1}, {2}, {3}              # No. of unit cells in x, y, z direction
+1, 1, 1              # (1 = Periodic) in x, y, z\n'''.format(framework_molecules, n_a, n_b, n_c)
+    return output
+
+def ForcefieldInfo(aa_filename, mm_filename, intra_filename):
+    output = '''------ Forcefield Information -------------------------------------------
+BASIC
+SPC
+{0}       # atom-atom interaction file
+{1}       # sorbate-sorbate interaction file
+{2}  # intramolecular interaction file/specification\n'''.format(aa_filename, mm_filename, intra_filename)
+    return output
+
+def IdealParams(sorbents_used):
+    output = '''------ Ideal Parameters -----------------------------------------------
+Ideal                # Equation of State
+{0}                    # no. of sorbates
+{1}              # Sorbate Name\n'''.format(len(sorbents_used, ', '.join[sorbents_used]))
+    return output
+
+def GCMCInfo(T, isotherm_length, sorbents_used, pressure_points):
+    output = []
+    output.append('''------ GCMC Information -----------------------------------------------
+1                 # No. of iterations
+{0}              # temperature
+Ideal Parameters   # Tag for the equation of state (NULL = Ideal Gas)
+{1}                  # No. of simulation points
+5000                # Block size for statistics
+{2}                  # no. of sorbates\n\n'''.format(T, isotherm_length, len(sorbents_used)))
+    for i in sorbents_used:
+	    output.append('''{0}            # Sorbate Name
+{1}           #  pressure
+Null               # sitemap filename (Null = no sitemap)
+4                  # no of gcmc movetypes
+1.0, 1.0, 1.0, 1.0      # move type weights
+RINSERT                   # type of move.1
+RDELETE                   # type of move.2
+RTRANSLATE                # type of move.4
+0.2, 1                    # Delta Translate, adjust delta option (0=NO, 1=YES)
+RROTATE
+0.2, 1\n\n'''.format(i, pressure_points))
+    return ''.join(output)
+
+def ConfigInit(sorbents_used, framework, restartfile = None):
+    output = []
+	output.append('''------ Configuration Initialization -------------------------------------\n''')
+	for i in sorbents_used:
+	    output.append('''{0}             # Sorbate_Type
+		{1}\n'''.format(i, 'GCMC NULL' if restartfile = None else restartfile))
+	output.append('''{0}             # Sorbent
+		FIXED NULL\n'''.format(framework))
+    return ''.join(output)
+	
+def DatafileInfo():
+    output = '''--------  Main Datafile Information --------
+Energy, position, pair_energy  # contents of datafile\n\n'''
+	return output
+
+def Movie(movie_name, n_iter):
+    output = '''------ Movie Information ----------------------------------------------
+{0}           # Movie filename (output is in xyz format)
+0, {1}            # Starting step, ending step
+{2}                    # Steps between frames
+No                   # Include zeolite in movie: Yes or No
+1, 1, 1             # Number of unit cell repeates to dump in x, y, z directions
+-----------------------------------------------------------------------\n\n
+'''.format(movie_name, n_iter, max(100,n_iter, n_iter/1000))
+    return(output)
+
 #Writes a .ctr file for your postprocessing. There;s orobably a better way than using music_post, but I'm not there yet
 def PostControlChanger(logger, species, n, framework, dirout, prefix, cutoff = '0'):
     with open("{0}/{1}.post.ctr" .format(dirout, 'full' if cutoff == '0' else 'trunc'), 'w') as file:
