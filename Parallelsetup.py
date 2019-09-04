@@ -37,28 +37,31 @@ logger.debug('Generating new files on {0}-{1}-{2} at {3}:{4}'.format(now.year, n
 logger.debug('-----------------------------------')
 ##################
 ######your experiment variables
-#### Directory stuff
-username = 'jrhm21' #your username, for writing paths and slurm outputs
-parentdir = Path('/home/r/{0}/scratch/03_music_chloroform_forcefield/'.format(username)) #The directory this python script is in
-targetdir = Path('./experiments/{0}/{1}/'.format(species[-1], T)) #The directory you want to output to
 
 #### simulation basics
-species = ['DMF'] #Name of your sorbent, as a list
-sorb_el_list = ['AldH_s', 'O_s', 'Carb_s', 'C_s', 'N_s', 'H_s'] #different elements in yoru sorbent, as a list
-framework = 'IRMOF1' #name of your framework
+species = ['MeOH'] #Name of your sorbent, as a list
+sorb_el_list = ['Me_s', 'O_s', 'H_s'] #different elements in yoru sorbent, as a list
+framework = 'IRMOF1step0' #name of your framework
 T = 298 #simulation temperature
 
+#### Directory stuff
+username = 'jrhm21' #your username, for writing paths and slurm outputs
+parentdir = Path('/home/r/{0}/scratch/02_music_squished_IRMOF1/'.format(username)) #The directory this python script is in
+targetdir = Path('./experiments/{0}/tension/{1}/'.format(species[-1], framework)) #The directory you want to output to
+
+
+
 ##### forcefield information
-forcefield = 'DMFAA' # lookup code for you interaction parameters in Forcefield.py 
+forcefield = 'MeOH' # lookup code for you interaction parameters in Forcefield.py 
 hicut = 18 #atom-atom interaciton cutoff, in angstrom
 coultype = 'Ewald' #fluid-fluid interactions calcualtion type
 pmap = True #do you have fluid-framework pmaps
 emap = True #do you have fluid-framework emaps?
 
 ##### adsorption information
-iso_length = 9 #number of isotherm points
-minrelpress = -1.5 #Minimum pressure to be considered, as a fration of saturation pressure (pMin = pSat*10^minrelpress) 
-maxrelpress = -1 #maximum pressure to be considered, accoring to the above equation
+iso_length = 20 #number of isotherm points
+minrelpress = -1 #Minimum pressure to be considered, as a fration of saturation pressure (pMin = pSat*10^minrelpress) 
+maxrelpress = 0.5 #maximum pressure to be considered, accoring to the above equation
 
 
 #simulation information
@@ -74,9 +77,9 @@ pressure = 'file' #Useful for restarts if you want the pressure to eb asingle va
 
 setup.directorymaker(logger, targetdir)
 for directory in range(1, 17):
-    setup.directorymaker(logger, '{0}{1:02d}/'.format(targetdir, directory))
-setup.directorymaker(logger, '{0}{1}/'.format(targetdir, 'fullpostfiles'))
-setup.directorymaker(logger, '{0}{1}/'.format(targetdir, 'truncpostfiles'))
+    setup.directorymaker(logger, '{0}/{1:02d}/'.format(targetdir, directory))
+setup.directorymaker(logger, '{0}/{1}/'.format(targetdir, 'fullpostfiles'))
+setup.directorymaker(logger, '{0}/{1}/'.format(targetdir, 'truncpostfiles'))
 #####First we'll calculate your isotherm and write a pressure.dat file in your target directory
 satP = setup.pSat(logger, species[-1], T)
 istm = setup.isothermcalculator(logger, satP, iso_length, minrelpress, maxrelpress)
@@ -84,15 +87,15 @@ setup.PressureFileWriter(logger, species[-1], T, satP, istm, targetdir) #goes in
 
 ##### Now to make some control files for you
 for directory in range(1, 17):
-    setup.GcmcControlChanger(logger, species[-1], sorb_el_list, T, n, framework, '{0}{1:02d}/'.format(targetdir, directory), n_iterations, restart, ctrl_file_name, pressure)
+    setup.GcmcControlChanger(logger, species[-1], sorb_el_list, T, iso_length, framework, '{0}/{1:02d}/'.format(targetdir, directory), n_iterations, restart, ctrl_file_name, pressure)
     for i, value in enumerate(istm): #now I make the extra .ctr files to give you final .xyz files for each simulaiton
-        setup.GcmcControlChanger(logger, species[-1], sorb_el_list, T, '1', framework, '{0}{1:02d}/'.format(targetdir, directory), '1', 'RESTARTFILE {0}.{1}.res.{2}'.format(framework, species[-1], i+1), '{0}kpa_restart.ctr'.format(value), value) #makes your control files for all of your pressure points
-    setup.PostControlChanger(logger, species[-1], T, n, framework, '{0}{1:02d}/'.format(targetdir, directory), '0')
-    setup.PostControlChanger(logger, species[-1], T, n, framework, '{0}{1:02d}/'.format(targetdir, directory), '60')
-    setup.GcmcRunWriter(logger, species[-1], T, framework, parentdir, '{0}{1:02d}/'.format(targetdir, directory), istm, '../')#the last variable is the relative location of your interactions files
-setup.IsothermExtractMover(logger, species[-1], T, framework, targetdir, n)
+        setup.GcmcControlChanger(logger, species[-1], sorb_el_list, T, '1', framework, '{0}/{1:02d}/'.format(targetdir, directory), '1', 'RESTARTFILE {0}.{1}.res.{2}'.format(framework, species[-1], i+1), '{0}kpa_restart.ctr'.format(value), value) #makes your control files for all of your pressure points
+    setup.PostControlChanger(logger, species[-1], iso_length, framework, '{0}/{1:02d}/'.format(targetdir, directory),directory, '0')
+    setup.PostControlChanger(logger, species[-1], iso_length, framework, '{0}/{1:02d}/'.format(targetdir, directory),directory, '60')
+    setup.GcmcRunWriter(logger, species[-1], T, framework, parentdir, '{0}/{1:02d}/'.format(targetdir, directory), istm,directory, '../')#the last variable is the relative location of your interactions files
+setup.IsothermExtractMover(logger, species[-1], T, framework, targetdir, iso_length)
 setup.TaskfarmRunWriter(logger, species[-1], T, framework, parentdir, targetdir)
-setup.AtmAtmMover(logger, sorb_el_list, forcefield, coultype, hicut, frameowrk, targetdir)
+setup.AtmAtmMover(logger, sorb_el_list, forcefield, coultype, hicut, framework, targetdir)
 setup.SorbSorbWriter(logger, species[-1], sorb_el_list,framework,targetdir, pmap, emap)
 setup.IntraWriter(logger, species[-1], sorb_el_list, framework, targetdir)
 
