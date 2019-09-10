@@ -56,6 +56,8 @@ hicut = 18 #atom-atom interaciton cutoff, in angstrom
 coultype = None #fluid-fluid interactions calcualtion type
 pmap = False #do you have fluid-framework pmaps
 emap = False #do you have fluid-framework emaps?
+FluFra = True #do you have explicit fluid-framework lennard-jones interactions?
+
 
 #################
 ###########################
@@ -65,19 +67,17 @@ setup.directorymaker(logger, targetdir)
 ##### Now to make some control files for you
 setup.MapMakeRunWriter(logger, species[-1], sorb_el_list, '{0}/'.format(parentdir), targetdir)
 for i in sorb_el_list:
-	setup.mapctrlfilewriter(logger, i, framework, targetdirectory)
-setup.AtmAtmMover(logger, sorb_el_list, forcefield, coultype, hicut, framework, targetdir)
-setup.SorbSorbWriter(logger, species[-1], sorb_el_list,framework,targetdir, pmap, emap)
+    setup.mapctrlfilewriter(logger, i, framework, targetdir)
+setup.AtmAtmMover(logger, sorb_el_list, forcefield, coultype, hicut, framework, targetdir, FluFra)
+setup.SorbSorbWriter(logger, sorb_el_list, sorb_el_list,framework,targetdir, pmap, emap)
 setup.IntraWriter(logger, species[-1], sorb_el_list, framework, targetdir)
 
 logger.info('''
 ##################################################################
 So I've done the following:
-Created the directory {0} and 16 subdirectories for taskfarming.
-Calculated and written an isotherm between {1} and {2} kPa, then placed in it in {0}.
-Created a gcmc.ctr file, 2 post control files, and a run.gcmc file for each subdirectory.
-Created a python script called isothermextractor.py, a taskfarm document and a backup, and finally run.taskfarmer in {0}.
+First I made directory {0}.
+Then I produced a map making control file and runscript for you to make it.
 Finally I wrote an atom_atom_file, sorb_sorb_file, and intramolecular_file into {0}.
 You're good to go!
 ##################################################################
-'''.format(targetdir, satP*10**minrelpress, satP*10**maxrelpress))
+'''.format(targetdir))

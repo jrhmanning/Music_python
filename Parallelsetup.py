@@ -48,8 +48,10 @@ T = 298 #simulation temperature
 username = 'jrhm21' #your username, for writing paths and slurm outputs
 parentdir = Path('/home/r/{0}/scratch/02_music_squished_IRMOF1/'.format(username)) #The directory this python script is in
 targetdir = Path('./experiments/{0}/tension/{1}/'.format(species[-1], framework)) #The directory you want to output to
-
-
+Intfilelocation = '../'
+atomfilelocation = '../../../../../atoms'
+molfilelocation = '../../../../../molecules/tension/'
+mapfilelocation = '../../../../../maps/tension/'
 
 ##### forcefield information
 forcefield = 'MeOH' # lookup code for you interaction parameters in Forcefield.py 
@@ -92,7 +94,7 @@ for directory in range(1, 17):
         setup.GcmcControlChanger(logger, species[-1], sorb_el_list, T, '1', framework, '{0}/{1:02d}/'.format(targetdir, directory), '1', 'RESTARTFILE {0}.{1}.res.{2}'.format(framework, species[-1], i+1), '{0}kpa_restart.ctr'.format(value), value) #makes your control files for all of your pressure points
     setup.PostControlChanger(logger, species[-1], iso_length, framework, '{0}/{1:02d}/'.format(targetdir, directory),directory, '0')
     setup.PostControlChanger(logger, species[-1], iso_length, framework, '{0}/{1:02d}/'.format(targetdir, directory),directory, '60')
-    setup.GcmcRunWriter(logger, species[-1], T, framework, parentdir, '{0}/{1:02d}/'.format(targetdir, directory), istm,directory, '../')#the last variable is the relative location of your interactions files
+    setup.GcmcRunWriter(logger, species[-1], T, framework, parentdir, '{0}/{1:02d}/'.format(targetdir, directory), istm,directory, Intfilelocation, atomfilelocation, molfilelocation, mapfilelocation)#the last variable is the relative location of your interactions files
 setup.IsothermExtractMover(logger, species[-1], T, framework, targetdir, iso_length)
 setup.TaskfarmRunWriter(logger, species[-1], T, framework, parentdir, targetdir)
 setup.AtmAtmMover(logger, sorb_el_list, forcefield, coultype, hicut, framework, targetdir)
