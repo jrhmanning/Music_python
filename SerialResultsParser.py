@@ -19,7 +19,7 @@
 #### ## Per Unitcell Loading averages ,  for the ensemble
 #### ## configfile : ./{{Tag}}.{{Step}}
 ####   Iter. No    Inst.(molec/uc)   Block (molec/uc)   Cumul(molec/uc
-#### Molecule : {{Sorbent}}
+#### Molecule : {{framework}}
 #### ~~~Data~~~
 #### ## Per Unitcell Loading averages ,  for the ensemble
 #### ## configfile : ./{{Tag}}.{{Step}}
@@ -30,114 +30,159 @@
 #### (Next step begins)
 
 import os
+import sys
+import numpy as np
+from pymbar import timeseries
+from collections import defaultdict
 
 species = 'Nitrogen'
-sorbent = 'IRMOF1'
-path = './'
-tag = 'postfile'
-
+framework = 'IRMOF1step3'
+path = './postfiles/'
+filename = '01.postoutput'
+Template='{0}.{1}.con'.format(framework, species)
+outputpath='./processed_results_serial/'
 
 
 def FindFiles(path = './', tag = 'postfile'):
     postfiles = []
-	for filename in os.listdir(path): ### find your post files
+    for filename in os.listdir(path): ### find your post files
         print(filename)
         if filename.endswith(tag):
             print('Identified post file ', filename, ' for analysis.')
             postfiles.append(filename)
-	return postfiles
+    return postfiles
 
 def DetectNSteps(filetext, Template):
-    alldata = []
-	confiles = set()
+    confiles = set()
     for line in filetext:
         if Template in line:
+            #rint('ping!')
             confiles.add(line.split(' ')[-1].split('.')[-1])
-	return confiles
+    print('{0} steps'.format(len(list(confiles))))
+    #print(confiles)
+    return confiles
 
 def DetectStepBegin(filetext, confile):
     startlines = []
+    print(confile)
     for count,line in enumerate(filetext):
         if confile in line:
             startlines.append(count)
-	return startlines[0:1] 			
-	### WARNING: this line assumes the first 2 mentions of your con file name are immediately before iter/Energy and iter/N data
+    print(startlines)
+    return startlines[0:2]
+    ### WARNING: this line assumes the first 2 mentions of your con file name are immediately before iter/Energy and iter/N data
 
 def FindEnergyDataBegin(filetext, line):
-    if 'Total Energy averages' in filetext(line-1):
-	    return line+2
+    if 'Total Energy averages' in filetext[line-1]:
+        return line+2
     else:
-	    print('Oh no! I failed to find your energy data for this step!')
-		return False
+        print('Oh no! I failed to find your energy data for this step!')
+    return False
 
 def FindIntDataBegin(filetext, line):
     while True:
         line +=1
-        if len(alldata[line]) == 0:
+        if len(filetext[line].strip()) == 0:
             break
-	line +=1
-	if 'All the averages below are based on cum avg' in filetext(line):
-		return line+3
-	else:
-	    print('Oh no! I failed to find your interactions data for this step!')
-		return False
+    line +=1
+    if 'All the averages below are based on cum avg' in filetext[line]:
+        return line+3
+    else:
+        print('Oh no! I failed to find your interactions data for this step!')
+    return False
 
 def FindNDataBegin(filetext,line):
-    if 'Per Unitcell Loading averages' in filetext(line-1):
-	    return line+2
+    if 'Per Unitcell Loading averages' in filetext[line-1]:
+        return line+2
     else:
-	    print('Oh no! I failed to find your loading data for this step!')
-		return False
+        print('Oh no! I failed to find your loading data for this step!')
+        return False
 
 def RawXvsIter(filetext,line):
-    iter = []
-	val = []
-	while True:
-	    if len(filetext[line]) ==0:
-		    break
-		linedata = filetext[line].split(' ')
-		iter.append(linedata[0])
-		val.append(linedata[2])
-		line+=1
-	return iter, val
+    XvIDict={}
+    while True:
+        linedata=filetext[line].strip()
+        if len(linedata) ==0:
+            break
+        if linedata.startswith('##'):
+            break
+        linedata2=linedata.split()
+        #print(linedata2)
+        XvIDict[int(linedata2[0])]=float(linedata2[2])
+        line+=1
+    #print(XvIDict)
+    return XvIDict
+
+def IntReader(linedata, species, framework):
+    FluFlu=False
+    FluFra=False
+    Coul=False
+    NCoul=False
+    Value=None
+    rawdata=linedata.split()
+    #print(rawdata)
+    if '--' in rawdata[0]:
+        tag1=rawdata[0].split('--')[0]
+        tag2=rawdata[0].split('--')[1]
+    else:
+        return FluFlu, FluFra, Coul, NCoul, Value
+    if tag1 not in species:
+        return FluFlu, FluFra, Coul, NCoul, Value 
+    if not tag2:
+        print('!!!\nI couldn\'t find a second species in your interaction at line {0}. \nCheck the post file at line {0}, and if that\'s not the problem, check the IntReader function!\n!!!'.format(line))
+        sys.exit()
+    if tag2 in species:
+        FluFlu=True
+    elif tag2 in framework:
+        FluFra=True
+    else:
+        print('!!!\nI couldn\'t identify the second species in your interaction at line {0}. \nCheck the post file at line {0}, and if that\'s not the problem, check your variable definitions, then the IntReader function!\n!!!'.format(line))
+        sys.exit()
+    if rawdata[1] == 'Coulombic':
+        Coul=True
+    elif rawdata[1] =='NonCoulom':
+        NCoul=True
+    else:
+        return FluFlu, FluFra, Coul, NCoul, Value
+    Value=rawdata[5]
+    return FluFlu, FluFra, Coul, NCoul, Value
 	
-def RawInt(filetext,line, species, sorbent):
-    NCFluFlu = None
-	CoulFluFlu = None
-	NCFluFra = None
-	CoulFluFra = None
-	while True:
-	    rawdata = []
-	    if len(filetext[line]) == 0:
-		    break
-		elif 'No Molecs' in filetext[line]:
-		    line +=1
-		elif len(filetext[line].split' ') !=6:
-		    print('!!!\nSomething weird just happened, and I don\'t recognise this line. Looks like the RawInt function needs to be fixed!')
-			print('Linedata:\n',filetext[line],'\n!!!')
-		else:
-		    rawdata.append(i for i in filetext[line].split' ')
-			if rawdata[1] == 'Coulombic':
-			    if rawdata[0].split('--')[1] in species:
-				    CoulFluFlu = rawdata[5]
-				elif rawdata[0].split('--')[1] in sorbent:
-				    CoulFluFra = rawdata[5]
-				else:
-				    print('!!!\nSomething weird just happened, and I don\'t recognise this line. Looks like the RawInt function needs to be fixed!')
-			        print('Data read in:\n',rawdata,'\n!!!')
-			elif rawdata[1] == 'Coulombic':
-			    if rawdata[0].split('--')[1] in species:
-				    CoulFluFlu = rawdata[5]
-				elif rawdata[0].split('--')[1] in sorbent:
-				    CoulFluFra = rawdata[5]
-				else:
-				    print('!!!\nSomething weird just happened, and I don\'t recognise this line. Looks like the RawInt function needs to be fixed!')
-			        print('Data read in:\n',rawdata,'\n!!!')
-            else:
-			    print('!!!\nSomething weird just happened, and I don\'t recognise this line. Looks like the RawInt function needs to be fixed!')
-			    print('Data read in:\n',rawdata,'\n!!!')
-		line +=1
-	return NCFluFlu,CoulFluFlu,NCFluFra,CoulFluFra	
+def RawInt(filetext,line, species, framework):
+    ResultDict={
+	'NCFluFlu':None,
+	'CoulFluFlu':None,
+	'NCFluFra':None,
+	'CoulFluFra':None
+	}
+    Value=None
+    while True:
+        linedata=filetext[line].strip()
+        #print(linedata)
+        if len(linedata) == 0:
+            break
+        elif 'No Molecs' in linedata:
+            line +=1
+            continue
+        elif len(linedata.split()) <5:
+            print('!!!\nSomething weird just happened, and I don\'t recognise this line. Looks like the RawInt function needs to be fixed!')
+            print('Linedata:\n',linedata,'\n!!!')
+        else:
+            FluFlu, FluFra, Coul, NCoul, Value = IntReader(linedata, species, framework)
+        if Value is None:
+            line+=1
+            continue
+        if FluFlu:
+            if Coul:
+                ResultDict['CoulFluFlu']=[float(Value)]
+            if NCoul:
+                ResultDict['NCFluFlu']=[float(Value)]
+        if FluFra:
+            if Coul:
+                ResultDict['CoulFluFra']=[float(Value)]
+            if NCoul:
+                ResultDict['NCFluFra']=[float(Value)]
+        line +=1
+    return ResultDict	
 
 def directorymaker(dxout = "./"):
     filename = "{0}test.txt" .format(dxout) #Test file name
@@ -151,60 +196,189 @@ def directorymaker(dxout = "./"):
         f.write("FOOBAR") #Writes something in the test file
     print("Directory {0} written!".format(dxout))
 
+def collatedata(dictionary):
+#I want this function to read in my huge data dictionaries 
+#Then I want it to work out the approximate final value (U or N) for each markov chain and simulation step
+#Then i want to average each of these approximate final values across parallel markov chains 
+    simsteps=list(dictionary.keys())
+    print(simsteps)
+    timesteps=list(dictionary[simsteps[0]].keys())
+    print(timesteps)
+    parallelsims=len(dictionary[simsteps[0]][timesteps[0]])
+    print(dictionary[simsteps[0]][timesteps[0]])
+    resultstot={}
+#    datalist=np.zeros(len(EDicts[simsteps[0]].keys()))
+    for t in simsteps:
+        resultstot[t]={'Ave':[], 'Std':[]}
+    for q in range(parallelsims):
+        print(q)
+        for r in simsteps: 
+            #print(len(datalist))
+            placeholder=[]
+            for s in timesteps:
+                placeholder.append(dictionary[r][s][q])
+            #print(placeholder)
+            datalist=np.asarray(placeholder, dtype=float)
+            #print(datalist)
+            [t0, g, Neff_max] = timeseries.detectEquilibration(datalist)
+            #print('t0={0}'.format(t0))
+            #print(datalist[t0:])
+            avg=np.mean(datalist[t0:])
+            sdv=np.std(datalist[t0:])
+            resultstot[r]['Ave'].append(round(avg,3))
+            resultstot[r]['Std'].append(round(sdv,3))
+    return resultstot
 
-######
-The script bit
-######
+with open('{0}{1}'.format(path, filename), 'r') as f:
+    print('~~~~~reading file {0}~~~~~'.format(filename))
+    alldata = f.readlines()
+confiles = DetectNSteps(alldata, Template)
+print('I\'ve found {0} steps in your simulation data - please check this is right!'
+      .format(len(list(confiles))))
+lines = []
+Elines = []
+Ilines = []
+Nlines = []
+for j in range(1,len(confiles)+1):
+    val1= DetectStepBegin(alldata, '{0}.{1}'.format(Template,j))
+    lines.append(val1)
+#print(lines)
+for k in lines:
+    #print(k)
+    val2 = FindEnergyDataBegin(alldata, k[0])
+    Elines.append(val2)
+    val3 = FindIntDataBegin(alldata, k[0])
+    Ilines.append(val3)
+    val4 = FindNDataBegin(alldata, k[1])
+    Nlines.append(val4)
 
-filelist = Findfiles(path, tag)
-for i in filelist:
-    with open(i, 'r') as f:
-	    alldata = f.readlines()
-	confiles = DetectNSteps(alldata, tag)
-	lines = []
-	Elines = []
-	Ilines = []
-	Nlines = []
-	for j in confiles:
-	    val1 = DetectStepBegin(alldata, j)
-		lines.append(val1)
-	for k in lines:
-        val2 = FindEnergyDataBegin(alldata, k[0])
-		Elines.append(val2)
-		val3 = FindIntDataBegin(alldata, k[0])
-		Ilines.append(val3)
-		val4 = FindNDataBegin(alldata, k[1])
-		Nlines.append(val4)
-    directorymaker('./processed_results/')
-	for count,l in Elines:
-	    iter,nrg = RawXvsIter(alldata,l)
-		with open('./processed_results/{0}.{1}.{2:02d}.energytraj.csv'.format(species,sorbent,count), 'w') as f:
-		    f.write(
-'''##Raw energy vs iteration data output data from simulation {0} on {1}
-Iter, Etot (kJ/mol)'''.format(species, sorbent))
-            for i in range(len(iter)):
-			    f.write('{0}, {1}\n'.format(iter[i],nrg[i]))
-	for count,m in Nlines:
-	    iter,N = RawXvsIter(alldata,l)
-		with open('./processed_results/{0}.{1}.{2:02d}.occupancytraj.csv'.format(species,sorbent,count), 'w') as f:
-		    f.write(
-'''##N vs iteration data output data from simulation {0} on {1}
-Iter, Etot (kJ/mol)'''.format(species, sorbent))
-            for i in range(len(iter)):
-			    file.write('{0}, {1}\n'.format(iter[i],N[i]))
-	NCFluFlu = []
-	CoulFluFlu = []
-	NCFluFra = []
-	CoulFluFra = []
-	for n in Ilines:
-	    a,b,c,d = RawInt(alldata,n,species, sorbent)
-		NCFluFlu.append(a)
-		CoulFluFlu.append(b)
-		NCFluFra.append(c)
-		CoulFluFra.append(d)
-	with open('./processed_results/{0}.{1}.all.SimVsInt.csv'.format(species,sorbent), 'w') as f:
-	    f.write(
-'''## Simulation step vs cum avg. interaction energy from simulation of {0} on {1}
-Step, NC fluid-fluid (kJ/mol), Coul fluid-fluid, NC fluid-framework, Coul fluid-framework'''.format(species, sorbent))
-        for o in range(len(NcFluFlu)):
-            f.write('{0}, {1}, {2}, {3}, {4}\n'.format(o, NCFluFlu[o], CoulFluFlu[o], NcFluFra[o], CoulFluFra[o]))
+EDicts=defaultdict(list)
+NDicts=defaultdict(list)
+IntDicts=defaultdict(list)
+    
+for count,l in enumerate(Elines, 1):
+    if count not in EDicts:
+        EDicts[count]=defaultdict(list)
+    NEWEDict = RawXvsIter(alldata,l)
+    for key in NEWEDict.keys():
+        #print(key)
+        EDicts[count][key]
+        EDicts[count][key].append(NEWEDict[key])
+#print(EDicts)
+for count, m in enumerate(Nlines, 1):
+    if count not in NDicts:
+        NDicts[count]=defaultdict(list)
+    NEWNDict = RawXvsIter(alldata,m+1)
+    for key in NEWNDict.keys():
+#        #print(key)
+        NDicts[count][key]
+        NDicts[count][key].append(NEWNDict[key])
+
+for count, n in enumerate(Ilines, 1):
+    if count not in IntDicts:
+    #print(IntDicts)
+        IntDicts[count]=defaultdict(list)
+    NEWIntDict=RawInt(alldata, n, species, framework)
+    #print(NEWIntDict)
+#print(IntDicts)
+    for key in NEWIntDict.keys():
+        IntDicts[count][key]
+        IntDicts[count][key].append(NEWIntDict[key][0])		
+        #print(IntDicts)
+#print(NEWNDict)
+
+print('~~~~~Finished reading all files, beginning to process data.~~~~~')
+####
+#The data analysis bit
+#####
+
+#print(EDicts[1])
+
+Ntot = collatedata(NDicts)
+Etot = collatedata(EDicts)
+simsteps = list(IntDicts.keys())
+inttypes = list(IntDicts[1].keys())
+#print(Ntot)
+print(Ntot)
+
+####
+#The data outputting bit
+####			
+print('~~~~~Finished processing all data, beginning to write files.~~~~~')
+
+directorymaker(outputpath)
+with open('{2}{0}.{1}.energytraj.csv'.format(species,framework, outputpath), 'w') as f:
+    f.write(
+'''##Raw energy vs iteration data output data from simulation {0} on {1}\n'''.format(species, framework))
+    f.write('''N iterations, Etot (kJ)\n''')
+
+    for count,o in enumerate(EDicts.keys()):
+        f.write('Isotherm step {0}\n'.format(count+1))
+        f.write('n, energy (kJ)')
+        f.write('\n')
+        for p in EDicts[o].keys():
+            f.write('{0}, '.format(p))
+            f.write(', '.join([str(x) for x in EDicts[o][p]]))
+            f.write('\n')
+        f.write('Average stationary energy')
+        for q in Etot[o]['Ave']:
+            f.write(', {0}'.format(str(round(q,3))))
+        f.write('\n')
+        f.write('Standard deviation')
+        for q in Etot[o]['Std']:
+            f.write(', {0}'.format(str(round(q,3))))
+        f.write('\n')
+
+with open('{2}{0}.{1}.occupancytraj.csv'.format(species,framework, outputpath), 'w') as f:
+    f.write(
+'''##N vs iteration data output data from simulation {0} on {1}\n'''.format(species, framework))
+    f.write('''Iteration, Ntot (mol/uc):\n''')
+    for count,o in enumerate(NDicts.keys()):
+        f.write('Isotherm step {0}\n'.format(count+1))
+        f.write('n, occupancy (mol/uc)')
+        f.write('\n')
+        for p in NDicts[o].keys():
+            f.write('{0}, '.format(p))
+            f.write(', '.join([str(x) for x in NDicts[o][p]]))
+            f.write('\n')
+        f.write('Average stationary occupancy')
+        for q in Ntot[o]['Ave']:
+            f.write(', {0}'.format(str(round(q,3))))
+        f.write('\n')
+        f.write('Standard deviation')
+        for q in Ntot[o]['Std']:
+            f.write(', {0}'.format(str(round(q,3))))
+        f.write('\n')#    for o in NDicts.keys():
+
+
+with open('{2}{0}.{1}.Interactions.csv'.format(species,framework, outputpath), 'w') as f:
+    f.write(
+'''##interaction strength vs step output data from simulation {0} on {1}\n'''.format(species, framework))
+    f.write('''Iteration type, strenght (kJ/mol)\n''')
+    for count, o in enumerate(IntDicts.keys()):
+        f.write('Isotherm step {0}\n'.format(count+1))
+        f.write('Interaction type, Strength (kJ/mol)')
+        f.write('\n')
+        for p in IntDicts[o].keys():
+            f.write('{0}, '.format(p))
+            f.write(', '.join([str(x) for x in IntDicts[o][p]]))
+            f.write('\n')
+        f.write('\n')
+
+print(IntDicts)
+with open('{2}{0}.{1}.Alldata.csv'.format(species,framework, outputpath), 'w') as f:
+    f.write('''## Simulation step vs: occupancy, energy, interaction energies (times 4). All data is from a simulation of {0} on {1}\n'''.format(species, framework))
+    f.write('''Simulation step, Ntot average(mol/uc), stdev, Etot (kJ/mol), stdev, ''')
+    f.write(', '.join([str(x) for x in IntDicts[1].keys()]))
+    f.write('\n')
+    for o in Ntot.keys():
+        print(o)
+        f.write('{0}, '.format(o))
+        f.write('{0}, {1}, '.format(np.mean(Ntot[o]['Ave']), np.mean(Ntot[o]['Std'])))
+        f.write('{0}, {1}, '.format(np.mean(Etot[o]['Ave']), np.mean(Etot[o]['Std'])))
+        for p in IntDicts[o].keys():
+            f.write(', '.join([str(round(x,5)) for x in IntDicts[o][p]]))
+            f.write(', ')
+        f.write('\n')
+		
+print('~~~~~Finished writing files, your data should be in {0}~~~~~'.format(outputpath))

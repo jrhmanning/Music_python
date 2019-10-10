@@ -243,7 +243,7 @@ for i in range(len(filelist)):
         print('~~~~~reading file {0}~~~~~'.format(filelist[i]))
         alldata = f.readlines()
     confiles = DetectNSteps(alldata, Template)
-    print('I\'ve found {0} steps in your simnulation data - please check this is right!'
+    print('I\'ve found {0} steps in your simulation data - please check this is right!'
           .format(len(list(confiles))))
     lines = []
     Elines = []
@@ -291,7 +291,6 @@ for i in range(len(filelist)):
             IntDicts[count][key]
             IntDicts[count][key].append(NEWIntDict[key][0])		
             #print(IntDicts)
-    print(NDicts[20][7500])
 
 print('~~~~~Finished reading all files, beginning to process data.~~~~~')
 ####
