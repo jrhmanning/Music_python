@@ -17,6 +17,7 @@ from pathlib import Path
 import logging
 import datetime
 import argparse
+import glob
 
 import musicpy.setup as setup
 import musicpy.Antoine as Antoine
@@ -73,7 +74,7 @@ maxrelpress = 0.5 #maximum pressure to be considered, accoring to the above equa
 
 
 #simulation information
-n_iterations = '1000000' #number of MC steps int he main simulation
+n_iterations = '3000000' #number of MC steps int he main simulation
 restart = None #if you want to write a restart control file, change this from None to 'RESTARTFILE {0}.{1}.res.{2}'.format(framework, species[-1], 20), where 20 is the restartfile you're going from
 ctrl_file_name = 'gcmc.ctr' #name for your control file. Main one is gcmc.ctr, other ones can be called as you like
 pressure = 'file' #Useful for restarts if you want the pressure to eb asingle value e.g. '10' (kPa)
@@ -86,26 +87,69 @@ pressure = 'file' #Useful for restarts if you want the pressure to eb asingle va
 setup.directorymaker(logger, targetdir)
 for directory in range(1, 17):
     setup.directorymaker(logger, '{0}/{1:02d}/'.format(targetdir, directory))
+    setup.directorymaker(logger, '{0}/{1:02d}/archive'.format(targetdir, directory))
+
 setup.directorymaker(logger, '{0}/{1}/'.format(targetdir, 'fullpostfiles'))
+setup.directorymaker(logger, '{0}/{1}/archive'.format(targetdir, 'fullpostfiles'))
+for f in glob.glob(r'{0}/{1}/*.postfile'.format(targetdir, 'fullpostfiles')):
+    print(f)
+    os.rename(f, '{0}/{1}/archive/{2}'.format(targetdir, 'fullpostfiles', f.split('/')[-1]))
 setup.directorymaker(logger, '{0}/{1}/'.format(targetdir, 'truncpostfiles'))
+setup.directorymaker(logger, '{0}/{1}/archive'.format(targetdir, 'truncpostfiles'))
+for f in glob.glob(r'{0}/{1}/*.postfile'.format(targetdir, 'truncpostfiles')):
+    print(f)
+    os.rename(f, '{0}/{1}/archive/{2}'.format(targetdir, 'truncpostfiles', f.split('/')[-1]))
+
 #####First we'll calculate your isotherm and write a pressure.dat file in your target directory
 satP = setup.pSat(logger, species[-1], T)
 istm = setup.isothermcalculator(logger, satP, iso_length, minrelpress, maxrelpress)
-setup.PressureFileWriter(logger, species[-1], T, satP, istm, targetdir) #goes in the directory above your individual one, gets symbolic linked later
+#setup.PressureFileWriter(logger, species[-1], T, satP, istm, targetdir) #goes in the directory above your individual one, gets symbolic linked later
 
 ##### Now to make some control files for you
 for directory in range(1, 17):
-    setup.GcmcControlChanger(logger, species[-1], sorb_el_list, T, iso_length, framework, '{0}/{1:02d}/'.format(targetdir, directory), n_iterations, restart, ctrl_file_name, pressure)
-    for i, value in enumerate(istm): #now I make the extra .ctr files to give you final .xyz files for each simulaiton
-        setup.GcmcControlChanger(logger, species[-1], sorb_el_list, T, '1', framework, '{0}/{1:02d}/'.format(targetdir, directory), '1', 'RESTARTFILE {0}.{1}.res.{2}'.format(framework, species[-1], i+1), '{0}kpa_restart.ctr'.format(value), value, 1) #makes your control files for all of your pressure points
+    for f in glob.glob(r'{0}/{1:02d}/*.con.*'.format(targetdir, directory)):
+       print(f)
+       os.rename(f, '{0}/{1:02d}/archive/{2}'.format(targetdir, directory, f.split('/')[-1])) 
+    for f in glob.glob(r'{0}/{1:02d}/*.xyz'.format(targetdir, directory)):
+       print(f)
+       os.rename(f, '{0}/{1:02d}/archive/{2}'.format(targetdir, directory, f.split('/')[-1]))
+
+    #setup.GcmcControlChanger(logger, species[-1], sorb_el_list, T, iso_length, framework, '{0}/{1:02d}/'.format(targetdir, directory), n_iterations, restart, ctrl_file_name, pressure)
+    for i, value in enumerate(istm,1): #now I make the extra .ctr files to give you final .xyz files for each simulaiton
+        print(i)
+        setup.GcmcControlChanger(
+            logger,
+            species[-1],
+            sorb_el_list,
+            T,
+            '1',
+            framework,
+            '{0}/{1:02d}/'.format(targetdir, directory),
+            n_iterations,
+            'RESTARTFILE {0}.{1}.res.{2}'.format(framework, species[-1], i),
+            '{0}kpa_restart.ctr'.format(value),
+            value,
+            i) #makes your control files for all of your pressure points
     setup.PostControlChanger(logger, species[-1], iso_length, framework, '{0}/{1:02d}/'.format(targetdir, directory),directory, '0')
     setup.PostControlChanger(logger, species[-1], iso_length, framework, '{0}/{1:02d}/'.format(targetdir, directory),directory, '60')
-    setup.GcmcRunWriter(logger, species[-1], T, framework, parentdir, '{0}/{1:02d}/'.format(targetdir, directory), istm,directory, Intfilelocation, atomfilelocation, molfilelocation, mapfilelocation)#the last variable is the relative location of your interactions files
-setup.IsothermExtractMover(logger, species[-1], T, framework, targetdir, iso_length)
+    setup.GcmcRunWriter(
+        logger,
+        species[-1],
+        T,
+        framework,
+        parentdir,
+        '{0}/{1:02d}/'.format(targetdir, directory),
+        istm,
+        directory,
+        Intfilelocation,
+        atomfilelocation,
+        molfilelocation,
+        mapfilelocation)#the last variable is the relative location of your interactions files
+#setup.IsothermExtractMover(logger, species[-1], T, framework, targetdir, iso_length)
 setup.TaskfarmRunWriter(logger, species[-1], T, framework, parentdir, targetdir)
-setup.AtmAtmMover(logger, sorb_el_list, forcefield, coultype, hicut, framework, targetdir)
-setup.SorbSorbWriter(logger, species[-1], sorb_el_list,framework,targetdir, pmap, emap)
-setup.IntraWriter(logger, species[-1], sorb_el_list, framework, targetdir)
+#setup.AtmAtmMover(logger, sorb_el_list, forcefield, coultype, hicut, framework, targetdir)
+#setup.SorbSorbWriter(logger, species[-1], sorb_el_list,framework,targetdir, pmap, emap)
+#setup.IntraWriter(logger, species[-1], sorb_el_list, framework, targetdir)
 
 logger.info('''
 ##################################################################

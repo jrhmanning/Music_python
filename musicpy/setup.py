@@ -149,7 +149,7 @@ def directorymaker(logger, dxout = "."):
     logger.debug("Directory {0} written!".format(dxout))
 
 #This writes your atom-atom forcefield information based on the above dictionary at the start of the document
-def AtmAtmMover(logger, elements, forcefield,coultype=None, hicut=18, framework='IRMOF1', dxout = "./mapgen/test"):
+def AtmAtmMover(logger, elements, forcefield,coultype=None, hicut=18, framework='IRMOF1', dxout = "./mapgen/test", FluFra = None):
 #Find the MOF element list
     try:
         Forcefield.MOF_el_list[framework]
@@ -194,7 +194,7 @@ def AtmAtmMover(logger, elements, forcefield,coultype=None, hicut=18, framework=
         f.write("Fluid-Framework interactions\nLennard-Jones\n")
         for i in range(len(elements)):
             for j in range(len(Frame_el)):
-                f.write(LJPrep(None, elements[i], Frame_el[j]))
+                f.write(LJPrep(FluFra, elements[i], Frame_el[j], forcefield, hicut))
             f.write('\n')
     
         f.write('Coulombic\n')
@@ -233,7 +233,7 @@ def LJPrep(status, i, j, forcefield=None, hicut=None):
         return '{0} {1} LJ OFF\n'.format(i, j)
 
 def LBmixSig(a, b):
-    result = float(a)+float(b)/2
+    result = (float(a)+float(b))/2
     return str(round(result,3))
 
 def LBmixEps(a, b):
@@ -311,7 +311,7 @@ def Intsetup(logger, mol_name, elements, framework, forcefield, dxout, pmap = Tr
     IntraWriter(logger, mol_name, elements, framework, dxout)
 
 #Writes a bashscript for making your maps, compatible with SLURM
-def MapMakeRunWriter(logger, species, elements, parentdir, dxout = "./mapgen"):
+def MapMakeRunWriter(logger, species, elements, parentdir, dxout = "./mapgen", filelocation='../../../../'):
     with open("{0}/run.mapmaker" .format(dxout), "w") as file:
         file.write("""#!/usr/bin/env bash 
 #SBATCH --job-name={0}.map
@@ -329,15 +329,16 @@ module load group ce-molsim stack
 module load music/std
 
 # -- Find my directory
-cd {2}/{1}\n #Change this bit to get to your directory
-export ATOMSDIR=../../atoms
-export MOLSDIR=../../molecules
-export PMAPDIR=../../maps/{0}
-export EMAPDIR=../../maps
-\n\n# --Run\n""" .format(species, dxout.split(".")[-1], parentdir))
+cd {2}
+cd {1}\n #Change this bit to get to your directory
+export ATOMSDIR={3}atoms
+export MOLSDIR={3}molecules/tension/
+export PMAPDIR={3}maps/{0}
+export EMAPDIR={3}maps
+\n\n# --Run\n""" .format(species, dxout, parentdir, filelocation))
         for count, i in enumerate(elements, 1):
             file.write("music_mapmaker makemap_{0}.ctr > logfile{1}\n" .format(i, count, parentdir))
-    os.chmod("{0}run.mapmaker" .format(dxout), 0o777) #chmod so it's fully rwx for everyone (0o denotes the following number is in octal)
+    os.chmod("{0}/run.mapmaker" .format(dxout), 0o777) #chmod so it's fully rwx for everyone (0o denotes the following number is in octal)
     logger.debug("Runfile written!")   
 
 #Writes a control file for making your maps
@@ -549,7 +550,7 @@ np.savetxt("../{2}.{1}.{0}.results.csv", avgisotherms, delimiter=",") #output it
     logger.debug("Python isotherm extractor written!")
 
 #Writes a .ctr file for your gcmc simulations (production and for getting your final configuarions at the end). This currently cannot cope with multiple sorbents at once, creates a 2x2x2 cell, and has bias insert atom softcoded in
-def GcmcControlChanger(logger, species, elements, T, n, framework, dirout, iterations = '750000', Restart = None, name = 'gcmc.ctr', pressure = 'file'):
+def GcmcControlChanger(logger, species, elements, T, n, framework, dirout, iterations = '750000', Restart = None, name = 'gcmc.ctr', pressure = 'file',firstnum='1'):
     logger.debug(elements)
     x = random.randint(0,99999) #sets your random seed
     if isinstance(elements, list): #lets you use multi-element sorbent molecules
@@ -570,7 +571,7 @@ def GcmcControlChanger(logger, species, elements, T, n, framework, dirout, itera
 {1}.{0}.res         # Restart File to write to
 {1}.{0}.con          # Configuration File
 ------ Atomic Types --------------------------------------------------
-{3}                    # number of atomic types            \n\n""".format(species, framework, x, n_species, iterations, 1 if Restart == None else 30))
+{3}                    # number of atomic types            \n\n""".format(species, framework, x, n_species, iterations, firstnum))
         for i in elements:
             file.write("""{0}   #atom type\n{0}.atm #atom file name\n\n""".format(i))
         for i in Forcefield.MOF_el_list[framework]:
@@ -792,7 +793,7 @@ GCMC                            # Type of simulation GCMC, NVTMC , MD ....
     logger.debug("Post control file written!")
 
 #Writes a bashscript for actually running your simulations, compatible with SLURM
-def GcmcRunWriter(logger, species, T, framework, parentdir, dirout, isotherm, iteration, location='../'):
+def GcmcRunWriter(logger, species, T, framework, parentdir, dirout, isotherm, iteration, intlocation='../', atomfilelocation='../../../../', molfilelocation='../../../../',mapfilelocation='../../../../'):
     with open("{0}/run.gcmc".format(dirout), 'w') as file:
         file.write("""#!/usr/bin/env bash
 #SBATCH --job-name={0}.{1}
@@ -814,9 +815,9 @@ cd {3} #Change this bit to get to your directory
 cd {2}
 
 #create symbolic links to your interactions files and pressure file
-ln -s ../../../../atoms atoms
-ln -s ../../../../molecules molecules
-ln -s ../../../../maps/{0} maps
+ln -s {6} atoms
+ln -s {7} molecules
+ln -s {8} maps
 
 ln -s {5}atom_atom_file atom_atom_file
 ln -s {5}intramolecular_file intramolecular_file
@@ -838,7 +839,7 @@ music_post trunc.post.ctr > logfile.post.trunc #runs your postprocessing
 cp {4:02d}.trunc.postfile {5}truncpostfiles/
 
 
-""".format(species, T, dirout, parentdir, int(iteration), location))
+""".format(species, T, dirout, parentdir, int(iteration), intlocation, atomfilelocation, molfilelocation, mapfilelocation))
         for i, value in enumerate(isotherm): #for each isotherm point you're simulating
             file.write('music_gcmc {0}kpa_restart.ctr > {1}_restart.logfile\nmv finalconfig.xyz {3:02d}.{2}.{0}kpa.xyz\n'.format(value, int(i)+1, framework, int(iteration))) #set up a simulation to generate a new xyz file and move it to be names after the pressure point 
     os.chmod("{0}run.gcmc" .format(dirout), 0o777) #chmod so it's fully rwx for everyone (0o denotes the following number is in octal)
