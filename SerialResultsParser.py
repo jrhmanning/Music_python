@@ -34,13 +34,29 @@ import sys
 import numpy as np
 from pymbar import timeseries
 from collections import defaultdict
+import argparse
 
-species = 'Nitrogen'
-framework = 'IRMOF1step3'
-path = './postfiles/'
-filename = '01.postoutput'
+parser=argparse.ArgumentParser(description=""" Hello! I'm a python script who's here to post-process your Music Post output files!
+ My goal is to read in your Post file (identified by its suffix e.g. 'postfile') to an array;
+ Identify the number of simulation steps, then find the start point of each in the file;
+ I'll then read in the three raw data outputs for each step: energy vs iteration, number vs iteration, and specific interation;
+ I'll analyse these inputs to work out the step statistics and some other useful bits
+ Finally, I'll make a directory with .csv files ready to be graphed/further processed!""")
+
+parser.add_argument("species", help="Name of your sorbent molecule as found in the .con file name.")
+parser.add_argument("framework", help="Name of the framework molecule as found in the .con file name.")
+parser.add_argument("-p","--path", help="Path to the directory your post file is in. Defaults to current directory.", default="./", dest='path')
+parser.add_argument("filename", help="Name of the music_post output file.")
+parser.add_argument("-o","--outputpath", help="Name of the directory to output analysed datafiles into. Defaults to ./results/", default="./results/", dest='outputpath')
+args=parser.parse_args()
+
+
+species = args.species#'MeOH'
+framework = args.framework#'IRMOF1step0'
+path = args.path#'./up/'
+filename = args.filename#'01.full.postfile'
 Template='{0}.{1}.con'.format(framework, species)
-outputpath='./processed_results_serial/'
+outputpath=args.outputpath#'./upresults/'
 
 
 def FindFiles(path = './', tag = 'postfile'):
@@ -316,7 +332,7 @@ with open('{2}{0}.{1}.energytraj.csv'.format(species,framework, outputpath), 'w'
         f.write('Isotherm step {0}\n'.format(count+1))
         f.write('n, energy (kJ)')
         f.write('\n')
-        for p in EDicts[o].keys():
+        for p in sorted(EDicts[o].keys()):
             f.write('{0}, '.format(p))
             f.write(', '.join([str(x) for x in EDicts[o][p]]))
             f.write('\n')
@@ -337,7 +353,7 @@ with open('{2}{0}.{1}.occupancytraj.csv'.format(species,framework, outputpath), 
         f.write('Isotherm step {0}\n'.format(count+1))
         f.write('n, occupancy (mol/uc)')
         f.write('\n')
-        for p in NDicts[o].keys():
+        for p in sorted(NDicts[o].keys()):
             f.write('{0}, '.format(p))
             f.write(', '.join([str(x) for x in NDicts[o][p]]))
             f.write('\n')
