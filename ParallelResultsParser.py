@@ -249,7 +249,8 @@ def collatedata(dictionary):
 #The data gathering bit
 ######
 
-filelist = FindFiles(path, tag)
+filelist = sorted(FindFiles(path, tag))
+
 print(filelist)
 EDicts=defaultdict(list)
 NDicts=defaultdict(list)
@@ -342,13 +343,15 @@ with open('{2}{0}.{1}.energytraj.csv'.format(species,framework, outputpath), 'w'
 '''##Raw energy vs iteration data output data from simulation {0} on {1}\n'''.format(species, framework))
     f.write('''N iterations, Etot (kJ/mol)\n''')
 
-    for count,o in enumerate(EDicts.keys()):
+    for count,o in enumerate(sorted(EDicts.keys())): #iterate across simulation steps
+#        print(o)
         f.write('Isotherm step {0}\n'.format(count+1))
         f.write('n, ')
         f.write(', '.join([x.split('.')[0] for x in filelist]))
         f.write(', Average, Standard deviation')
         f.write('\n')
-        for p in EDicts[o].keys():
+        for p in sorted(EDicts[o].keys()): #iterate across simulation timesteps
+            print(len(EDicts[o][p]))
             f.write('{0}, '.format(p))
             f.write(', '.join([str(x) for x in EDicts[o][p]]))
             ave=round(np.mean(EDicts[o][p]), 3)
@@ -368,13 +371,13 @@ with open('{2}{0}.{1}.occupancytraj.csv'.format(species,framework, outputpath), 
     f.write(
 '''##N vs iteration data output data from simulation {0} on {1}\n'''.format(species, framework))
     f.write('''Iteration, Ntot (mol/uc):\n''')
-    for count,o in enumerate(NDicts.keys()):
+    for count,o in enumerate(sorted(NDicts.keys())):
         f.write('Isotherm step {0}\n'.format(count+1))
         f.write('n, ')
         f.write(', '.join([x.split('.')[0] for x in filelist]))
         f.write(', Average, Standard deviation')
         f.write('\n')
-        for p in NDicts[o].keys():
+        for p in sorted(NDicts[o].keys()):
             f.write('{0}, '.format(p))
             f.write(', '.join([str(x) for x in NDicts[o][p]]))
             ave=round(np.mean(NDicts[o][p]), 3)
@@ -401,7 +404,7 @@ with open('{2}{0}.{1}.Interactions.csv'.format(species,framework, outputpath), '
         f.write(', '.join([x.split('.')[0] for x in filelist]))
         f.write(', Average, Standard deviation')
         f.write('\n')
-        for p in IntDicts[o].keys():
+        for p in sorted(IntDicts[o].keys()):
             f.write('{0}, '.format(p))
             f.write(', '.join([str(x) for x in IntDicts[o][p]]))
             ave=round(np.mean(IntDicts[o][p]), 5)
@@ -414,7 +417,8 @@ with open('{2}{0}.{1}.Interactions.csv'.format(species,framework, outputpath), '
 with open('{2}{0}.{1}.Alldata.csv'.format(species,framework, outputpath), 'w') as f:
     f.write('''## Simulation step vs: occupancy, energy, interaction energies (times 4). All data is from a simulation of {0} on {1}\n'''.format(species, framework))
     f.write('''Simulation step, Ntot average(mol/uc), stdev, Etot (kJ/mol), stdev, ''')
-    f.write(', stdev, '.join([str(x) for x in IntDicts[1].keys()]))
+    for x in Inttot[1].keys():
+        f.write(', {0}, stdev'.join(str(x)))
     f.write('\n')
     for o in Ntot.keys():
         f.write('{0}, '.format(o))
