@@ -34,13 +34,30 @@ import sys
 import numpy as np
 from pymbar import timeseries
 from collections import defaultdict
+import argparse
 
-species = 'Nitrogen'
-framework = 'IRMOF1step3'
-path = './postfiles/'
-tag = 'postoutput'
+parser=argparse.ArgumentParser(description=""" Hello! I'm a python script who's here to post-process your Music Post output files!
+ My goal is to read in your Post file (identified by its suffix e.g. 'postfile') to an array;
+ Identify the number of simulation steps, then find the start point of each in the file;
+ I'll then read in the three raw data outputs for each step: energy vs iteration, number vs iteration, and specific interation;
+ I'll analyse these inputs to work out the step statistics and some other useful bits
+ Finally, I'll make a directory with .csv files ready to be graphed/further processed!""")
+
+parser.add_argument("species", help="Name of your sorbent molecule as found in the .con file name.")
+parser.add_argument("framework", help="Name of the framework molecule as found in the .con file name.")
+parser.add_argument("-p","--path", help="Path to the directory your post file is in. Defaults to current directory.", default="./", dest='path')
+parser.add_argument("tag", help="Name of the music_post output file suffixes.")
+parser.add_argument("-o","--outputpath", help="Name of the directory to output analysed datafiles into. Defaults to ./results/", default="./results/", dest='outputpath')
+args=parser.parse_args()
+
+
+species = args.species#'MeOH'
+framework = args.framework#'IRMOF1step0'
+path = args.path#'./up/'
+tag = args.tag#'postoutput'
 Template='{0}.{1}.con'.format(framework, species)
-outputpath='./processed_results/'
+outputpath=args.outputpath#'./upresults/'
+
 
 def FindFiles(path = './', tag = 'postfile'):
     postfiles = []
